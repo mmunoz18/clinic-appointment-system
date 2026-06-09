@@ -1,5 +1,6 @@
 using backend.Data;
 using Microsoft.EntityFrameworkCore;
+using backend.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,5 +32,21 @@ app.UseHttpsRedirection();
 app.UseCors("AllowReactApp");
 
 app.MapControllers();
+
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<ClinicDbContext>();
+
+    if (!context.Doctors.Any())
+    {
+        context.Doctors.AddRange(
+            new Doctor { Name = "Dr. Smith", Specialty = "Cardiology" },
+            new Doctor { Name = "Dr. Johnson", Specialty = "Pediatrics" },
+            new Doctor { Name = "Dr. Brown", Specialty = "Dermatology" }
+        );
+
+        context.SaveChanges();
+    }
+}
 
 app.Run();

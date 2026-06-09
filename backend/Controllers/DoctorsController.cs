@@ -1,5 +1,7 @@
+using backend.Data;
 using backend.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace backend.Controllers;
 
@@ -7,16 +9,83 @@ namespace backend.Controllers;
 [Route("api/[controller]")]
 public class DoctorsController : ControllerBase
 {
-    [HttpGet]
-    public ActionResult<IEnumerable<Doctor>> GetDoctors()
+    private readonly ClinicDbContext _context;
+
+    public DoctorsController(ClinicDbContext context)
     {
-        var doctors = new List<Doctor>
-        {
-            new Doctor { Id = 1, Name = "Dr. Smith", Specialty = "Cardiology" },
-            new Doctor { Id = 2, Name = "Dr. Johnson", Specialty = "Pediatrics" },
-            new Doctor { Id = 3, Name = "Dr. Brown", Specialty = "Dermatology" }
-        };
+        _context = context;
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<Doctor>>> GetDoctors()
+    {
+        var doctors = await _context.Doctors.ToListAsync();
 
         return Ok(doctors);
+    }
+
+    [HttpGet("{id}")]
+    public async Task<ActionResult<Doctor>> GetDoctor(int id)
+    {
+        var doctor = await _context.Doctors.FindAsync(id);
+
+        if (doctor == null)
+        {
+            return NotFound();
+        }
+
+        return Ok(doctor);
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<Doctor>> CreateDoctor(Doctor doctor)
+    {
+        _context.Doctors.Add(doctor);
+        await _context.SaveChangesAsync();
+
+        return CreatedAtAction(
+            nameof(GetDoctor),
+            new { id = doctor.Id },
+            doctor
+        );
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateDoctor(int id, Doctor doctor)
+    {
+        if (id != doctor.Id)
+        {
+            return BadRequest();
+        }
+
+        var existingDoctor = await _context.Doctors.FindAsync(id);
+
+        if (existingDoctor == null)
+        {
+            return NotFound();
+        }
+
+        existingDoctor.Name = doctor.Name;
+        existingDoctor.Specialty = doctor.Specialty;
+
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteDoctor(int id)
+    {
+        var doctor = await _context.Doctors.FindAsync(id);
+
+        if (doctor == null)
+        {
+            return NotFound();
+        }
+
+        _context.Doctors.Remove(doctor);
+        await _context.SaveChangesAsync();
+
+        return NoContent();
     }
 }
