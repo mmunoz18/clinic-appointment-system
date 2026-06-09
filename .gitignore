@@ -16,3 +16,6 @@
 # Environment files
 .env
 .env.local
+
+# Local database
+*.db
