@@ -19,7 +19,20 @@ public class AppointmentsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Appointment>>> GetAppointments()
     {
-        var appointments = await _context.Appointments.ToListAsync();
+        var appointments = await _context.Appointments
+        .Include(a => a.Doctor)
+        .Include(a => a.Patient)
+        .Select(a => new
+        {
+            a.Id,
+            a.DoctorId,
+            DoctorName = a.Doctor != null ? a.Doctor.Name : "",
+            a.PatientId,
+            PatientName = a.Patient != null ? a.Patient.Name : "",
+            a.AppointmentDate,
+            a.Status
+        })
+        .ToListAsync();
 
         return Ok(appointments);
     }
@@ -27,14 +40,27 @@ public class AppointmentsController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<Appointment>> GetAppointment(int id)
     {
-        var appointment = await _context.Appointments.FindAsync(id);
-
-        if (appointment == null)
+        var appointments = await _context.Appointments
+        .Include(a => a.Doctor)
+        .Include(a => a.Patient)
+        .Select(a => new
+        {
+            a.Id,
+            a.DoctorId,
+            DoctorName = a.Doctor != null ? a.Doctor.Name : "",
+            a.PatientId,
+            PatientName = a.Patient != null ? a.Patient.Name : "",
+            a.AppointmentDate,
+            a.Status
+        })
+        .FirstOrDefaultAsync(a => a.Id == id);
+        
+        if (appointments == null)
         {
             return NotFound();
         }
 
-        return Ok(appointment);
+        return Ok(appointments);
     }
 
     [HttpPost]

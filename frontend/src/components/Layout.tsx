@@ -1,19 +1,20 @@
-import { Link, Outlet } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 
 function Layout() {
   return (
-    <div>
-      <aside>
+    <div className="app-layout">
+      <aside className="sidebar">
         <h2>Clinic System</h2>
-        <nav>
-          <Link to="/">Dashboard</Link> |{" "}
-          <Link to="/doctors">Doctors</Link> |{" "}
-          <Link to="/patients">Patients</Link> |{" "}
-          <Link to="/appointments">Appointments</Link>
+
+        <nav className="nav">
+          <NavLink to="/">Dashboard</NavLink>
+          <NavLink to="/doctors">Doctors</NavLink>
+          <NavLink to="/patients">Patients</NavLink>
+          <NavLink to="/appointments">Appointments</NavLink>
         </nav>
       </aside>
 
-      <main>
+      <main className="main-content">
         <Outlet />
       </main>
     </div>

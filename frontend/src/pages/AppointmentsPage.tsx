@@ -4,7 +4,9 @@ import { getAppointments } from "../api/clinicApi";
 interface Appointment {
   id: number;
   patientId: number;
+  patientName: string;
   doctorId: number;
+  doctorName: string;
   appointmentDate: string;
   status: string;
 }
@@ -26,16 +28,35 @@ function AppointmentsPage() {
 
   return (
     <section>
-      <h1>Appointments</h1>
-
-      {appointments.map((appointment) => (
-        <div key={appointment.id}>
-          <h3>Patient: {appointment.patientId}</h3>
-          <p>Doctor: {appointment.doctorId}</p>
-          <p>Date: {appointment.appointmentDate}</p>
-          <p>Status: {appointment.status}</p>
+        <div className="page-header">
+        <h1>Appointments</h1>
+        <p>View scheduled clinic appointments.</p>
         </div>
-      ))}
+
+        <div className="table-card">
+        <table>
+            <thead>
+            <tr>
+                <th>Doctor</th>
+                <th>Patient</th>
+                <th>Date</th>
+                <th>Status</th>
+            </tr>
+            </thead>
+            <tbody>
+            {appointments.map((appointment) => (
+                <tr key={appointment.id}>
+                <td>{appointment.doctorName}</td>
+                <td>{appointment.patientName}</td>
+                <td>{new Date(appointment.appointmentDate).toLocaleString()}</td>
+                <td>
+                    <span className="status">{appointment.status}</span>
+                </td>
+                </tr>
+            ))}
+            </tbody>
+        </table>
+        </div>
     </section>
   );
 }

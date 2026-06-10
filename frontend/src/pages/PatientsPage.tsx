@@ -24,14 +24,29 @@ function PatientsPage() {
 
   return (
     <section>
-      <h1>Patients</h1>
-
-      {patients.map((patient) => (
-        <div key={patient.id}>
-          <h3>{patient.name}</h3>
-          <p>{patient.email}</p>
+        <div className="page-header">
+        <h1>Patients</h1>
+        <p>View and manage patient records.</p>
         </div>
-      ))}
+
+        <div className="table-card">
+        <table>
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+            </tr>
+            </thead>
+            <tbody>
+            {patients.map((patient) => (
+                <tr key={patient.id}>
+                <td>{patient.name}</td>
+                <td>{patient.email}</td>
+                </tr>
+            ))}
+            </tbody>
+        </table>
+        </div>
     </section>
   );
 }
