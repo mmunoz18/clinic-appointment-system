@@ -47,6 +47,38 @@ using (var scope = app.Services.CreateScope())
 
         context.SaveChanges();
     }
+    if (!context.Patients.Any())
+    {
+        context.Patients.AddRange(
+            new Patient
+            {
+                Name = "Maria Lopez",
+                Email = "maria.lopez@email.com"
+            },
+            new Patient
+            {
+                Name = "Carlos Rodriguez",
+                Email = "carlos.rodriguez@email.com"
+            },
+            new Patient
+            {
+                Name = "Ana Martinez",
+                Email = "ana.martinez@email.com"
+            },
+            new Patient
+            {
+                Name = "Jose Gonzalez",
+                Email = "jose.gonzalez@email.com"
+            },
+            new Patient
+            {
+                Name = "Sofia Vargas",
+                Email = "sofia.vargas@email.com"
+            }
+        );
+
+        context.SaveChanges();
+    }
 }
 
 app.Run();
