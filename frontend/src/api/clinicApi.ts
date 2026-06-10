@@ -19,3 +19,13 @@ export async function getPatients() {
 
   return response.json();
 }
+
+export async function getAppointments() {
+  const response = await fetch(`${API_BASE_URL}/api/appointments`);
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch appointments");
+  }
+
+  return response.json();
+}
