@@ -79,6 +79,48 @@ using (var scope = app.Services.CreateScope())
 
         context.SaveChanges();
     }
+
+    var tomorrow = DateTime.Today.AddDays(1);
+
+    context.Appointments.AddRange(
+        new Appointment
+        {
+            DoctorId = 1,
+            PatientId = 1,
+            AppointmentDate = tomorrow.AddHours(9),
+            Status = "Scheduled"
+        },
+        new Appointment
+        {
+            DoctorId = 1,
+            PatientId = 2,
+            AppointmentDate = tomorrow.AddHours(10),
+            Status = "Scheduled"
+        },
+        new Appointment
+        {
+            DoctorId = 2,
+            PatientId = 3,
+            AppointmentDate = tomorrow.AddHours(11),
+            Status = "Scheduled"
+        },
+        new Appointment
+        {
+            DoctorId = 3,
+            PatientId = 4,
+            AppointmentDate = tomorrow.AddDays(1).AddHours(9),
+            Status = "Scheduled"
+        },
+        new Appointment
+        {
+            DoctorId = 2,
+            PatientId = 5,
+            AppointmentDate = tomorrow.AddDays(1).AddHours(14),
+            Status = "Scheduled"
+        }
+    );
+
+    context.SaveChanges();
 }
 
 app.Run();
