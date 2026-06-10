@@ -9,6 +9,12 @@ interface Doctor {
   specialty: string;
 }
 
+interface Patient {
+  id: number;
+  name: string;
+  email: string;
+}
+
 function DashboardPage() {
   const [doctorCount, setDoctorCount] = useState(0);
   const [patientCount, setPatientCount] = useState(0);

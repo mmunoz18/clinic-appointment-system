@@ -6,9 +6,20 @@ export interface Doctor {
   specialty: string;
 }
 
+export interface Patient {
+  id: number;
+  name: string;
+  email: string;
+}
+
 export type CreateDoctorRequest = {
   name: string;
   specialty: string;
+};
+
+export type CreatePatientRequest = {
+  name: string;
+  email: string;
 };
 
 export async function getDoctors() {
@@ -78,5 +89,45 @@ export async function deleteDoctor(id: number) {
 
   if (!response.ok) {
     throw new Error("Failed to delete doctor");
+  }
+}
+
+export async function createPatient(patient: CreatePatientRequest) {
+  const response = await fetch(`${API_BASE_URL}/api/patients`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(patient),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to create patient");
+  }
+
+  return response.json();
+}
+
+export async function updatePatient(patient: Patient) {
+  const response = await fetch(`${API_BASE_URL}/api/patients/${patient.id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(patient),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to update patient");
+  }
+}
+
+export async function deletePatient(id: number) {
+  const response = await fetch(`${API_BASE_URL}/api/patients/${id}`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to delete patient");
   }
 }
