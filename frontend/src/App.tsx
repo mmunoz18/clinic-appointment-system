@@ -1,32 +1,22 @@
-import { useEffect, useState } from "react";
-
-interface Doctor {
-  id: number;
-  name: string;
-  specialty: string;
-}
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Layout from "./components/Layout";
+import DashboardPage from "./pages/DashboardPage";
+import DoctorsPage from "./pages/DoctorsPage";
+import PatientsPage from "./pages/PatientsPage";
+import AppointmentsPage from "./pages/AppointmentsPage";
 
 function App() {
-  const [doctors, setDoctors] = useState<Doctor[]>([]);
-
-  useEffect(() => {
-    fetch("http://localhost:5121/api/doctors")
-      .then((response) => response.json())
-      .then((data) => setDoctors(data))
-      .catch((error) => console.error(error));
-  }, []);
-
   return (
-    <div>
-      <h1>Doctors</h1>
-
-      {doctors.map((doctor) => (
-        <div key={doctor.id}>
-          <h3>{doctor.name}</h3>
-          <p>{doctor.specialty}</p>
-        </div>
-      ))}
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<DashboardPage />} />
+          <Route path="doctors" element={<DoctorsPage />} />
+          <Route path="patients" element={<PatientsPage />} />
+          <Route path="appointments" element={<AppointmentsPage />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }
 
