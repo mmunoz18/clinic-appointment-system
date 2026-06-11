@@ -136,6 +136,16 @@ th {
   display: flex;
   gap: 12px;
   align-items: center;
+  flex-wrap: wrap;
+}
+
+.form-card select,
+.form-card input {
+  min-width: 180px;
+}
+
+.form-card button {
+  white-space: nowrap;
 }
 
 .form-card h2 {
@@ -172,4 +182,20 @@ td button + button {
 
 td button + button:hover {
   background: #b91c1c;
+}
+
+select {
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: white;
+  color: #111827;
+}
+
+.error-message {
+  color: #b91c1c;
+  background: #fee2e2;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
 }
