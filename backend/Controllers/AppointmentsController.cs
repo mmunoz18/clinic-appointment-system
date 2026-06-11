@@ -66,43 +66,10 @@ public class AppointmentsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Appointment>> CreateAppointment(Appointment appointment)
     {
-        if (appointment.AppointmentDate <= DateTime.Now)
+        var validationError = await ValidateAppointmentAsync(appointment);
+        if (validationError != null)
         {
-            return BadRequest("Appointments must be scheduled in the future.");
-        }
-
-        var doctorExists = await _context.Doctors.AnyAsync(d =>
-            d.Id == appointment.DoctorId);
-
-        if (!doctorExists)
-        {
-            return BadRequest("Doctor does not exist.");
-        }
-
-        var patientExists = await _context.Patients.AnyAsync(p =>
-            p.Id == appointment.PatientId);
-
-        if (!patientExists)
-        {
-            return BadRequest("Patient does not exist.");
-        }
-
-        var doctorHasAppointment = await _context.Appointments.AnyAsync(a =>
-            a.DoctorId == appointment.DoctorId &&
-            a.AppointmentDate == appointment.AppointmentDate);
-
-        if (doctorHasAppointment)
-        {
-            return BadRequest("Doctor already has an appointment at this time.");
-        }
-
-        var patientHasAppointment = await _context.Appointments.AnyAsync(a =>
-            a.PatientId == appointment.PatientId &&
-            a.AppointmentDate == appointment.AppointmentDate);
-
-        if (patientHasAppointment)
-        {
-            return BadRequest("Patient already has an appointment at this time.");
+            return BadRequest(validationError);
         }
 
         _context.Appointments.Add(appointment);
@@ -130,45 +97,10 @@ public class AppointmentsController : ControllerBase
             return NotFound();
         }
 
-        if (appointment.AppointmentDate <= DateTime.Now)
+        var validationError = await ValidateAppointmentAsync(appointment, id);
+        if (validationError != null)
         {
-            return BadRequest("Appointments must be scheduled in the future.");
-        }
-
-        var doctorExists = await _context.Doctors.AnyAsync(d =>
-            d.Id == appointment.DoctorId);
-
-        if (!doctorExists)
-        {
-            return BadRequest("Doctor does not exist.");
-        }
-
-        var patientExists = await _context.Patients.AnyAsync(p =>
-            p.Id == appointment.PatientId);
-
-        if (!patientExists)
-        {
-            return BadRequest("Patient does not exist.");
-        }
-
-        var doctorHasAppointment = await _context.Appointments.AnyAsync(a => 
-            a.Id != id && 
-            a.DoctorId == appointment.DoctorId && 
-            a.AppointmentDate == appointment.AppointmentDate);
-
-        if (doctorHasAppointment)
-        {
-            return BadRequest("Doctor already has an appointment at this time.");
-        }
-
-        var patientHasAppointment = await _context.Appointments.AnyAsync(a =>
-            a.Id != id &&
-            a.PatientId == appointment.PatientId &&
-            a.AppointmentDate == appointment.AppointmentDate);
-
-        if (patientHasAppointment)
-        {
-            return BadRequest("Patient already has an appointment at this time.");
+            return BadRequest(validationError);
         }
 
         existingAppointment.DoctorId = appointment.DoctorId;
@@ -195,5 +127,89 @@ public class AppointmentsController : ControllerBase
         await _context.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    private async Task<string?> ValidateAppointmentAsync(Appointment appointment, int? appointmentId = null)
+    {
+        var dateError = ValidateAppointmentDate(appointment);
+        if (dateError != null) return dateError;
+
+        var doctorError = await ValidateDoctorExistsAsync(appointment.DoctorId);
+        if (doctorError != null) return doctorError;
+
+        var patientError = await ValidatePatientExistsAsync(appointment.PatientId);
+        if (patientError != null) return patientError;
+
+        var doctorAvailabilityError = await ValidateDoctorHasAppointmentAsync(appointment, appointmentId);
+        if (doctorAvailabilityError != null) return doctorAvailabilityError;
+
+        var patientAvailabilityError = await ValidatePatientHasAppointmentAsync(appointment, appointmentId);
+        if (patientAvailabilityError != null) return patientAvailabilityError;
+
+        return null;
+    }
+
+    private string? ValidateAppointmentDate(Appointment appointment)
+    {
+        if (appointment.AppointmentDate <= DateTime.Now)
+        {
+            return "Appointments must be scheduled in the future.";
+        }
+
+        return null;
+    }
+
+    private async Task<string?> ValidateDoctorExistsAsync(int doctorId)
+    {
+        var doctorExists = await _context.Doctors.AnyAsync(d => d.Id == doctorId);
+
+        if (!doctorExists)
+        {
+            return "Doctor does not exist.";
+        }
+
+        return null;
+    }
+
+    private async Task<string?> ValidatePatientExistsAsync(int patientId)
+    {
+        var patientExists = await _context.Patients.AnyAsync(p => p.Id == patientId);
+
+        if (!patientExists)
+        {
+            return "Patient does not exist.";
+        }
+
+        return null;
+    }
+
+    private async Task<string?> ValidateDoctorHasAppointmentAsync(Appointment appointment, int? appointmentId = null)
+    {
+        var hasConflict = await _context.Appointments.AnyAsync(a =>
+            a.DoctorId == appointment.DoctorId &&
+            a.AppointmentDate == appointment.AppointmentDate &&
+            (!appointmentId.HasValue || a.Id != appointmentId.Value));
+
+        if (hasConflict)
+        {
+            return "Doctor already has an appointment at this time.";
+        }
+
+        return null;
+    }
+
+    private async Task<string?> ValidatePatientHasAppointmentAsync(Appointment appointment, int? appointmentId = null)
+    {
+        var hasConflict = await _context.Appointments.AnyAsync(a => 
+            a.PatientId == appointment.PatientId && 
+            a.AppointmentDate == appointment.AppointmentDate &&
+            (!appointmentId.HasValue || a.Id != appointmentId.Value));
+
+        if (hasConflict)
+        {
+            return "Patient already has an appointment at this time.";
+        }
+
+        return null;
     }
 }
