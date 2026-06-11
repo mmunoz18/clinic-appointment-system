@@ -10,6 +10,7 @@ import {
   type Doctor,
   type Patient,
 } from "../api/clinicApi";
+import { toast } from "react-toastify";
 
 function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -22,7 +23,6 @@ function AppointmentsPage() {
   const [status, setStatus] = useState("Scheduled");
   const [editingAppointment, setEditingAppointment] =
     useState<Appointment | null>(null);
-  const [error, setError] = useState("");
 
   async function loadData() {
     const [appointmentsData, doctorsData, patientsData] = await Promise.all([
@@ -42,7 +42,6 @@ function AppointmentsPage() {
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    setError("");
 
     const appointmentPayload = {
       doctorId: Number(doctorId),
@@ -59,8 +58,10 @@ function AppointmentsPage() {
           doctorName: editingAppointment.doctorName,
           patientName: editingAppointment.patientName,
         });
+        toast.success("Appointment updated successfully");
       } else {
         await createAppointment(appointmentPayload);
+        toast.success("Appointment created successfully");
       }
 
       setDoctorId("");
@@ -70,7 +71,9 @@ function AppointmentsPage() {
       setEditingAppointment(null);
       await loadData();
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Something went wrong");
+      const message = error instanceof Error ? error.message : "Something went wrong";
+
+      toast.error(message);
     }
   }
 
@@ -83,9 +86,25 @@ function AppointmentsPage() {
   }
 
   async function handleDelete(id: number) {
-    await deleteAppointment(id);
-    await loadData();
-  }
+    const confirmed = window.confirm(
+        "Are you sure you want to delete this appointment? This action cannot be undone."
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    try {
+        await deleteAppointment(id);
+        toast.success("Appointment deleted successfully");
+        await loadData();
+    } catch (error) {
+        const message =
+        error instanceof Error ? error.message : "Error deleting appointment";
+
+        toast.error(message);
+    }
+}
 
   return (
     <section>
@@ -158,8 +177,6 @@ function AppointmentsPage() {
           </button>
         )}
       </form>
-
-      {error && <p className="error-message">{error}</p>}
 
       <div className="table-card">
         <table>

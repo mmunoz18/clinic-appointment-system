@@ -66,6 +66,8 @@ public class AppointmentsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Appointment>> CreateAppointment(Appointment appointment)
     {
+        try
+        {
         var validationError = await ValidateAppointmentAsync(appointment);
         if (validationError != null)
         {
@@ -80,53 +82,72 @@ public class AppointmentsController : ControllerBase
             new { id = appointment.Id },
             appointment
         );
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, "An unexpected error occurred.");
+        }
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateAppointment(int id, Appointment appointment)
     {
-        if (id != appointment.Id)
+        try
         {
-            return BadRequest();
+            if (id != appointment.Id)
+            {
+                return BadRequest();
+            }
+
+            var existingAppointment = await _context.Appointments.FindAsync(id);
+
+            if (existingAppointment == null)
+            {
+                return NotFound();
+            }
+
+            var validationError = await ValidateAppointmentAsync(appointment, id);
+            if (validationError != null)
+            {
+                return BadRequest(validationError);
+            }
+
+            existingAppointment.DoctorId = appointment.DoctorId;
+            existingAppointment.PatientId = appointment.PatientId;
+            existingAppointment.AppointmentDate = appointment.AppointmentDate;
+            existingAppointment.Status = appointment.Status;
+
+            await _context.SaveChangesAsync();
+
+            return NoContent();
         }
-
-        var existingAppointment = await _context.Appointments.FindAsync(id);
-
-        if (existingAppointment == null)
+        catch (Exception ex)
         {
-            return NotFound();
+            return StatusCode(500, "An unexpected error occurred.");
         }
-
-        var validationError = await ValidateAppointmentAsync(appointment, id);
-        if (validationError != null)
-        {
-            return BadRequest(validationError);
-        }
-
-        existingAppointment.DoctorId = appointment.DoctorId;
-        existingAppointment.PatientId = appointment.PatientId;
-        existingAppointment.AppointmentDate = appointment.AppointmentDate;
-        existingAppointment.Status = appointment.Status;
-
-        await _context.SaveChangesAsync();
-
-        return NoContent();
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteAppointment(int id)
     {
-        var appointment = await _context.Appointments.FindAsync(id);
-
-        if (appointment == null)
+        try
         {
-            return NotFound();
+            var appointment = await _context.Appointments.FindAsync(id);
+
+            if (appointment == null)
+            {
+                return NotFound();
+            }
+
+            _context.Appointments.Remove(appointment);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
         }
-
-        _context.Appointments.Remove(appointment);
-        await _context.SaveChangesAsync();
-
-        return NoContent();
+        catch (Exception ex)
+        {
+            return StatusCode(500, "An unexpected error occurred.");
+        }
     }
 
     private async Task<string?> ValidateAppointmentAsync(Appointment appointment, int? appointmentId = null)
@@ -140,10 +161,10 @@ public class AppointmentsController : ControllerBase
         var patientError = await ValidatePatientExistsAsync(appointment.PatientId);
         if (patientError != null) return patientError;
 
-        var doctorAvailabilityError = await ValidateDoctorHasAppointmentAsync(appointment, appointmentId);
+        var doctorAvailabilityError = await ValidateDoctorAvailabilityAsync(appointment, appointmentId);
         if (doctorAvailabilityError != null) return doctorAvailabilityError;
 
-        var patientAvailabilityError = await ValidatePatientHasAppointmentAsync(appointment, appointmentId);
+        var patientAvailabilityError = await ValidatePatientAvailabilityAsync(appointment, appointmentId);
         if (patientAvailabilityError != null) return patientAvailabilityError;
 
         return null;
@@ -183,7 +204,7 @@ public class AppointmentsController : ControllerBase
         return null;
     }
 
-    private async Task<string?> ValidateDoctorHasAppointmentAsync(Appointment appointment, int? appointmentId = null)
+    private async Task<string?> ValidateDoctorAvailabilityAsync(Appointment appointment, int? appointmentId = null)
     {
         var hasConflict = await _context.Appointments.AnyAsync(a =>
             a.DoctorId == appointment.DoctorId &&
@@ -198,7 +219,7 @@ public class AppointmentsController : ControllerBase
         return null;
     }
 
-    private async Task<string?> ValidatePatientHasAppointmentAsync(Appointment appointment, int? appointmentId = null)
+    private async Task<string?> ValidatePatientAvailabilityAsync(Appointment appointment, int? appointmentId = null)
     {
         var hasConflict = await _context.Appointments.AnyAsync(a => 
             a.PatientId == appointment.PatientId && 

@@ -40,52 +40,73 @@ public class PatientsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Patient>> CreatePatient(Patient patient)
     {
-        _context.Patients.Add(patient);
-        await _context.SaveChangesAsync();
+        try
+        {
+            _context.Patients.Add(patient);
+            await _context.SaveChangesAsync();
 
-        return CreatedAtAction(
-            nameof(GetPatient),
-            new { id = patient.Id },
-            patient
-        );
+            return CreatedAtAction(
+                nameof(GetPatient),
+                new { id = patient.Id },
+                patient
+            );
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, "An unexpected error occurred.");
+        }
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdatePatient(int id, Patient patient)
     {
-        if (id != patient.Id)
+        try
         {
-            return BadRequest();
+            if (id != patient.Id)
+            {
+                return BadRequest();
+            }
+
+            var existingPatient = await _context.Patients.FindAsync(id);
+
+            if (existingPatient == null)
+            {
+                return NotFound();
+            }
+
+            existingPatient.Name = patient.Name;
+            existingPatient.Email = patient.Email;
+
+            await _context.SaveChangesAsync();
+
+            return NoContent();
         }
-
-        var existingPatient = await _context.Patients.FindAsync(id);
-
-        if (existingPatient == null)
+        catch (Exception ex)
         {
-            return NotFound();
+            return StatusCode(500, "An unexpected error occurred.");
         }
-
-        existingPatient.Name = patient.Name;
-        existingPatient.Email = patient.Email;
-
-        await _context.SaveChangesAsync();
-
-        return NoContent();
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeletePatient(int id)
     {
-        var patient = await _context.Patients.FindAsync(id);
-
-        if (patient == null)
+        try
         {
-            return NotFound();
+            var patient = await _context.Patients.FindAsync(id);
+
+            if (patient == null)
+            {
+                return NotFound();
+            }
+
+            _context.Patients.Remove(patient);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
         }
-
-        _context.Patients.Remove(patient);
-        await _context.SaveChangesAsync();
-
-        return NoContent();
+        catch (Exception ex)
+        {
+            return StatusCode(500, "An unexpected error occurred.");
+        }
     }
 }

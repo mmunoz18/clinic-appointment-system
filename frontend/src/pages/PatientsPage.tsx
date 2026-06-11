@@ -6,6 +6,7 @@ import {
     updatePatient,
     type Patient,
 } from "../api/clinicApi";
+import { toast } from "react-toastify";
 
 function PatientsPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -26,23 +27,30 @@ function PatientsPage() {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
-    if (editingPatient) {
-      await updatePatient({
-        id: editingPatient.id,
-        name,
-        email,
-      });
-    } else {
-      await createPatient({
-        name,
-        email,
-      });
-    }
+    try {
+        if (editingPatient) {
+        await updatePatient({
+            id: editingPatient.id,
+            name,
+            email,
+        });
+        toast.success("Patient updated successfully");
+        } else {
+        await createPatient({
+            name,
+            email,
+        });
+        toast.success("Patient created successfully");
+        }
 
-    setName("");
-    setEmail("");
-    setEditingPatient(null);
-    loadPatients();
+        setName("");
+        setEmail("");
+        setEditingPatient(null);
+        loadPatients();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error updating patient";
+      toast.error(message);
+    }
   }
 
   async function handleEditPatient(patient: Patient) {
@@ -52,8 +60,22 @@ function PatientsPage() {
   }
 
   async function handleDeletePatient(id: number) {
-    await deletePatient(id);
-    loadPatients();
+    const confirmed = window.confirm(
+        "Are you sure you want to delete this patient? This action cannot be undone."
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    try {
+      await deletePatient(id);
+      toast.success("Patient deleted successfully");
+      loadPatients();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error deleting patient";
+      toast.error(message);
+    }
   }
 
   return (

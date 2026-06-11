@@ -40,52 +40,73 @@ public class DoctorsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Doctor>> CreateDoctor(Doctor doctor)
     {
-        _context.Doctors.Add(doctor);
-        await _context.SaveChangesAsync();
+        try
+        {
+            _context.Doctors.Add(doctor);
+            await _context.SaveChangesAsync();
 
-        return CreatedAtAction(
-            nameof(GetDoctor),
-            new { id = doctor.Id },
-            doctor
-        );
+            return CreatedAtAction(
+                nameof(GetDoctor),
+                new { id = doctor.Id },
+                doctor
+            );
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, "An unexpected error occurred.");
+        }
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateDoctor(int id, Doctor doctor)
     {
-        if (id != doctor.Id)
+        try
         {
-            return BadRequest();
+            if (id != doctor.Id)
+            {
+                return BadRequest();
+            }
+
+            var existingDoctor = await _context.Doctors.FindAsync(id);
+
+            if (existingDoctor == null)
+            {
+                return NotFound();
+            }
+
+            existingDoctor.Name = doctor.Name;
+            existingDoctor.Specialty = doctor.Specialty;
+
+            await _context.SaveChangesAsync();
+
+            return NoContent();
         }
-
-        var existingDoctor = await _context.Doctors.FindAsync(id);
-
-        if (existingDoctor == null)
+        catch (Exception ex)
         {
-            return NotFound();
+            return StatusCode(500, "An unexpected error occurred.");
         }
-
-        existingDoctor.Name = doctor.Name;
-        existingDoctor.Specialty = doctor.Specialty;
-
-        await _context.SaveChangesAsync();
-
-        return NoContent();
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteDoctor(int id)
     {
-        var doctor = await _context.Doctors.FindAsync(id);
-
-        if (doctor == null)
+        try
         {
-            return NotFound();
+            var doctor = await _context.Doctors.FindAsync(id);
+
+            if (doctor == null)
+            {
+                return NotFound();
+            }
+
+            _context.Doctors.Remove(doctor);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
         }
-
-        _context.Doctors.Remove(doctor);
-        await _context.SaveChangesAsync();
-
-        return NoContent();
+        catch (Exception ex)
+        {
+            return StatusCode(500, "An unexpected error occurred.");
+        }
     }
 }
