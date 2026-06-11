@@ -145,6 +145,7 @@ function AppointmentsPage() {
         <input
           type="datetime-local"
           value={appointmentDate}
+          min={new Date().toISOString().slice(0, 16)}
           onChange={(event) => setAppointmentDate(event.target.value)}
           required
         />
@@ -195,7 +196,7 @@ function AppointmentsPage() {
               <tr key={appointment.id}>
                 <td>{appointment.doctorName}</td>
                 <td>{appointment.patientName}</td>
-                <td>{new Date(appointment.appointmentDate).toLocaleString()}</td>
+                <td>{new Date(appointment.appointmentDate).toLocaleString("es-ES", {dateStyle: "medium",timeStyle: "short"})}</td>
                 <td>
                   <span className="status">{appointment.status}</span>
                 </td>
