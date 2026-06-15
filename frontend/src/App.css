@@ -24,6 +24,8 @@ a {
   background: #0f172a;
   color: white;
   padding: 24px;
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar h2 {
@@ -198,4 +200,30 @@ select {
   border-radius: 8px;
   padding: 12px;
   margin-bottom: 16px;
+}
+
+.logout-button {
+  margin-top: auto;
+  background: transparent;
+  color: #cbd5e1;
+  border: 1px solid #334155;
+  padding: 0.7rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.logout-button:hover {
+  background: #1e293b;
+  color: white;
+}
+
+.auth-link {
+  color: #2563eb;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-link:hover {
+  text-decoration: underline;
 }
