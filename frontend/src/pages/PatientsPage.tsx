@@ -7,12 +7,14 @@ import {
     type Patient,
 } from "../api/clinicApi";
 import { toast } from "react-toastify";
+import ConfirmModal from "../components/ConfirmModal";
 
 function PatientsPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
+  const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
 
   function loadPatients() {
     getPatients()
@@ -59,18 +61,15 @@ function PatientsPage() {
     setEmail(patient.email);
   }
 
-  async function handleDeletePatient(id: number) {
-    const confirmed = window.confirm(
-        "Are you sure you want to delete this patient? This action cannot be undone."
-    );
-
-    if (!confirmed) {
-        return;
+  async function confirmDeletePatient() {
+    if (!patientToDelete) {
+      return;
     }
 
     try {
-      await deletePatient(id);
+      await deletePatient(patientToDelete.id);
       toast.success("Patient deleted successfully");
+      setPatientToDelete(null);
       loadPatients();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error deleting patient";
@@ -135,7 +134,7 @@ function PatientsPage() {
                 <td>{patient.email}</td>
                 <td>
                   <button onClick={() => handleEditPatient(patient)}>Edit</button>
-                  <button onClick={() => handleDeletePatient(patient.id)}>
+                  <button onClick={() => setPatientToDelete(patient)}>
                     Delete
                   </button>
                 </td>
@@ -144,6 +143,22 @@ function PatientsPage() {
             </tbody>
         </table>
         </div>
+        
+        {patientToDelete && (
+          <ConfirmModal
+            title="Delete patient?"
+            message={
+              <>
+                Are you sure you want to delete{" "}
+                <strong>{patientToDelete.name}</strong>?
+              </>
+            }
+            warning="If this patient has appointments, their appointment history may be affected."
+            confirmText="Delete"
+            onCancel={() => setPatientToDelete(null)}
+            onConfirm={confirmDeletePatient}
+          />
+        )}
     </section>
   );
 }

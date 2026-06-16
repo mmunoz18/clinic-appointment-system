@@ -7,12 +7,14 @@ import {
   type Doctor,
 } from "../api/clinicApi";
 import { toast } from "react-toastify";
+import ConfirmModal from "../components/ConfirmModal";
 
 function DoctorsPage() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [name, setName] = useState("");
   const [specialty, setSpecialty] = useState("");
   const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
+  const [doctorToDelete, setDoctorToDelete] = useState<Doctor | null>(null);
 
   async function loadDoctors() {
     const data = await getDoctors();
@@ -58,24 +60,21 @@ function DoctorsPage() {
     setSpecialty(doctor.specialty);
   }
 
-  async function handleDelete(id: number) {
-    const confirmed = window.confirm(
-        "Are you sure you want to delete this doctor? This action cannot be undone."
-    );
-
-    if (!confirmed) {
-        return;
+  async function confirmDeleteDoctor() {
+    if (!doctorToDelete) {
+      return;
     }
-    
+
     try {
-      await deleteDoctor(id);
+      await deleteDoctor(doctorToDelete.id);
       toast.success("Doctor deleted successfully");
+      setDoctorToDelete(null);
       await loadDoctors();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error deleting doctor";
       toast.error(message);
     }
-  }
+}
 
   return (
     <section>
@@ -138,7 +137,7 @@ function DoctorsPage() {
                 <td>{doctor.specialty}</td>
                 <td>
                   <button onClick={() => handleEdit(doctor)}>Edit</button>
-                  <button onClick={() => handleDelete(doctor.id)}>
+                  <button onClick={() => setDoctorToDelete(doctor)}>
                     Delete
                   </button>
                 </td>
@@ -147,6 +146,22 @@ function DoctorsPage() {
           </tbody>
         </table>
       </div>
+      
+      {doctorToDelete && (
+        <ConfirmModal
+          title="Delete doctor?"
+          message={
+            <>
+              Are you sure you want to delete{" "}
+              <strong>{doctorToDelete.name}</strong>?
+            </>
+          }
+          warning="If this doctor has appointments, deletion may fail. Reassign or cancel appointments first."
+          confirmText="Delete"
+          onCancel={() => setDoctorToDelete(null)}
+          onConfirm={confirmDeleteDoctor}
+        />
+      )}
     </section>
   );
 }

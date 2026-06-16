@@ -34,40 +34,41 @@ function LoginPage() {
   }
 
   return (
-    <section>
-      <div className="page-header">
-        <h1>Login</h1>
-        <p>Sign in to access the clinic system.</p>
-      </div>
+    <section className="auth-page">
+      <div className="auth-card">
+        <div className="auth-header">
+          <h1>Clinic System</h1>
+          <h2>Welcome back</h2>
+          <p>Sign in to access your clinic dashboard.</p>
+        </div>
 
-      <form onSubmit={handleSubmit} className="form-card">
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          required
-        />
+        <form onSubmit={handleSubmit} className="auth-form">
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+          />
 
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          required
-        />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+          />
 
-        <button type="submit">
-          Login
-        </button>
-        
-        <p>
+          <button type="submit">Login</button>
+        </form>
+
+        <p className="auth-footer">
           Don&apos;t have an account?{" "}
           <Link to="/register" className="auth-link">
             Register
           </Link>
         </p>
-      </form>
+      </div>
     </section>
   );
 }

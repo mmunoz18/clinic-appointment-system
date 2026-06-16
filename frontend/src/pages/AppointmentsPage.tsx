@@ -11,6 +11,7 @@ import {
   type Patient,
 } from "../api/clinicApi";
 import { toast } from "react-toastify";
+import ConfirmModal from "../components/ConfirmModal";
 
 function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -23,6 +24,7 @@ function AppointmentsPage() {
   const [status, setStatus] = useState("Scheduled");
   const [editingAppointment, setEditingAppointment] =
     useState<Appointment | null>(null);
+  const [appointmentToDelete, setAppointmentToDelete] = useState<Appointment | null>(null);
 
   async function loadData() {
     const [appointmentsData, doctorsData, patientsData] = await Promise.all([
@@ -85,23 +87,19 @@ function AppointmentsPage() {
     setStatus(appointment.status);
   }
 
-  async function handleDelete(id: number) {
-    const confirmed = window.confirm(
-        "Are you sure you want to delete this appointment? This action cannot be undone."
-    );
-
-    if (!confirmed) {
+  async function confirmDeleteAppointment() {
+    if (!appointmentToDelete) {
         return;
     }
 
     try {
-        await deleteAppointment(id);
+        await deleteAppointment(appointmentToDelete.id);
         toast.success("Appointment deleted successfully");
+        setAppointmentToDelete(null);
         await loadData();
     } catch (error) {
         const message =
         error instanceof Error ? error.message : "Error deleting appointment";
-
         toast.error(message);
     }
 }
@@ -202,7 +200,7 @@ function AppointmentsPage() {
                 </td>
                 <td>
                   <button onClick={() => handleEdit(appointment)}>Edit</button>
-                  <button onClick={() => handleDelete(appointment.id)}>
+                  <button onClick={() => setAppointmentToDelete(appointment)}>
                     Delete
                   </button>
                 </td>
@@ -211,6 +209,22 @@ function AppointmentsPage() {
           </tbody>
         </table>
       </div>
+      
+      {appointmentToDelete && (
+        <ConfirmModal
+          title="Delete appointment?"
+          message={
+            <>
+              Are you sure you want to delete appointment with{" "}
+              <strong>{appointmentToDelete.doctorName}</strong> and{" "}
+              <strong>{appointmentToDelete.patientName}</strong>?
+            </>
+          }
+          confirmText="Delete"
+          onCancel={() => setAppointmentToDelete(null)}
+          onConfirm={confirmDeleteAppointment}
+        />
+      )}
     </section>
   );
 }
