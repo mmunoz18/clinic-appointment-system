@@ -16,6 +16,12 @@ function PatientsPage() {
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
 
+  const role = localStorage.getItem("role");
+  const canManagePatients = role === "Admin" || role === "Receptionist";
+  const canEditPatients = role === "Admin" || role === "Receptionist";
+  const canDeletePatients = role === "Admin";
+  const showPatientActions = canEditPatients || canDeletePatients;
+
   function loadPatients() {
     getPatients()
       .then((data) => setPatients(data))
@@ -84,40 +90,43 @@ function PatientsPage() {
         <p>View and manage patient records.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="form-card">
-            <h2>{editingPatient ? "Edit Patient" : "Add Patient"}</h2>
 
-            <input
-            type="text"
-            placeholder="Patient name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            required
-            />
+        {canManagePatients && (
+          <form onSubmit={handleSubmit} className="form-card">
+              <h2>{editingPatient ? "Edit Patient" : "Add Patient"}</h2>
 
-            <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-            />
+              <input
+              type="text"
+              placeholder="Patient name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              required
+              />
 
-            <button type="submit">{editingPatient ? "Update Patient" : "Add Patient"}</button>
-            
-            {editingPatient && (
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingPatient(null);
-                  setName("");
-                  setEmail("");
-                }}
-              >
-                Cancel
-              </button>
-            )}
-        </form>
+              <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              required
+              />
+
+              <button type="submit">{editingPatient ? "Update Patient" : "Add Patient"}</button>
+              
+              {editingPatient && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingPatient(null);
+                    setName("");
+                    setEmail("");
+                  }}
+                >
+                  Cancel
+                </button>
+              )}
+          </form>
+        )}
 
         <div className="table-card">
         <table>
@@ -125,22 +134,36 @@ function PatientsPage() {
             <tr>
                 <th>Name</th>
                 <th>Email</th>
+                {showPatientActions && <th>Actions</th>}
             </tr>
             </thead>
             <tbody>
-            {patients.map((patient) => (
-                <tr key={patient.id}>
+            {patients.length === 0 ? (
+                <tr>
+                    <td colSpan={3} className="empty-state">
+                        No patients found.
+                    </td>
+                </tr>
+            ) : (
+            patients.map((patient) => (
+              <tr key={patient.id}>
                 <td>{patient.name}</td>
                 <td>{patient.email}</td>
+                {showPatientActions && (
                 <td>
-                  <button onClick={() => handleEditPatient(patient)}>Edit</button>
-                  <button onClick={() => setPatientToDelete(patient)}>
-                    Delete
-                  </button>
+                  {canEditPatients && (
+                    <button onClick={() => handleEditPatient(patient)}>Edit</button>
+                  )}
+                  {canDeletePatients && (
+                    <button onClick={() => setPatientToDelete(patient)}>
+                      Delete
+                    </button>
+                  )}
                 </td>
-                </tr>
-            ))}
-            </tbody>
+                )}
+              </tr>
+            )))}
+          </tbody>
         </table>
         </div>
         

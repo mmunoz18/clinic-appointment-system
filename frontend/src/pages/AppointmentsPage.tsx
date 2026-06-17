@@ -25,6 +25,11 @@ function AppointmentsPage() {
   const [editingAppointment, setEditingAppointment] =
     useState<Appointment | null>(null);
   const [appointmentToDelete, setAppointmentToDelete] = useState<Appointment | null>(null);
+  
+  const role = localStorage.getItem("role");
+  const canCreateAppointments = role === "Admin" || role === "Receptionist";
+  const canDeleteAppointments = role === "Admin" || role === "Receptionist";
+  const canEditAppointments = role === "Admin" || role === "Receptionist" || role === "Doctor";
 
   async function loadData() {
     const [appointmentsData, doctorsData, patientsData] = await Promise.all([
@@ -111,71 +116,74 @@ function AppointmentsPage() {
         <p>Schedule and manage clinic appointments.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="form-card">
-        <h2>{editingAppointment ? "Edit Appointment" : "Add Appointment"}</h2>
 
-        <select
-          value={doctorId}
-          onChange={(event) => setDoctorId(event.target.value)}
-          required
-        >
-          <option value="">Select doctor</option>
-          {doctors.map((doctor) => (
-            <option key={doctor.id} value={doctor.id}>
-              {doctor.name} - {doctor.specialty}
-            </option>
-          ))}
-        </select>
+      {canCreateAppointments && ( 
+        <form onSubmit={handleSubmit} className="form-card">
+          <h2>{editingAppointment ? "Edit Appointment" : "Add Appointment"}</h2>
 
-        <select
-          value={patientId}
-          onChange={(event) => setPatientId(event.target.value)}
-          required
-        >
-          <option value="">Select patient</option>
-          {patients.map((patient) => (
-            <option key={patient.id} value={patient.id}>
-              {patient.name}
-            </option>
-          ))}
-        </select>
-
-        <input
-          type="datetime-local"
-          value={appointmentDate}
-          min={new Date().toISOString().slice(0, 16)}
-          onChange={(event) => setAppointmentDate(event.target.value)}
-          required
-        />
-
-        <select
-          value={status}
-          onChange={(event) => setStatus(event.target.value)}
-        >
-          <option value="Scheduled">Scheduled</option>
-          <option value="Cancelled">Cancelled</option>
-          <option value="Completed">Completed</option>
-        </select>
-
-        <button type="submit">
-          {editingAppointment ? "Update Appointment" : "Add Appointment"}
-        </button>
-
-        {editingAppointment && (
-          <button
-            type="button"
-            onClick={() => {
-              setEditingAppointment(null);
-              setDoctorId("");
-              setPatientId("");
-              setAppointmentDate("");
-              setStatus("Scheduled");
-            }}
+          <select
+            value={doctorId}
+            onChange={(event) => setDoctorId(event.target.value)}
+            required
           >
-            Cancel
+            <option value="">Select doctor</option>
+            {doctors.map((doctor) => (
+              <option key={doctor.id} value={doctor.id}>
+                {doctor.name} - {doctor.specialty}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={patientId}
+            onChange={(event) => setPatientId(event.target.value)}
+            required
+          >
+            <option value="">Select patient</option>
+            {patients.map((patient) => (
+              <option key={patient.id} value={patient.id}>
+                {patient.name}
+              </option>
+            ))}
+          </select>
+
+          <input
+            type="datetime-local"
+            value={appointmentDate}
+            min={new Date().toISOString().slice(0, 16)}
+            onChange={(event) => setAppointmentDate(event.target.value)}
+            required
+          />
+
+          <select
+            value={status}
+            onChange={(event) => setStatus(event.target.value)}
+          >
+            <option value="Scheduled">Scheduled</option>
+            <option value="Cancelled">Cancelled</option>
+            <option value="Completed">Completed</option>
+          </select>
+
+          <button type="submit">
+            {editingAppointment ? "Update Appointment" : "Add Appointment"}
           </button>
-        )}
-      </form>
+
+          {editingAppointment && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditingAppointment(null);
+                setDoctorId("");
+                setPatientId("");
+                setAppointmentDate("");
+                setStatus("Scheduled");
+              }}
+            >
+              Cancel
+            </button>
+          )}
+        </form>
+      )}
 
       <div className="table-card">
         <table>
@@ -185,27 +193,39 @@ function AppointmentsPage() {
               <th>Patient</th>
               <th>Date</th>
               <th>Status</th>
-              <th>Actions</th>
+              {canEditAppointments && <th>Actions</th>}
             </tr>
           </thead>
 
           <tbody>
-            {appointments.map((appointment) => (
-              <tr key={appointment.id}>
-                <td>{appointment.doctorName}</td>
-                <td>{appointment.patientName}</td>
-                <td>{new Date(appointment.appointmentDate).toLocaleString("es-ES", {dateStyle: "medium",timeStyle: "short"})}</td>
-                <td>
-                  <span className="status">{appointment.status}</span>
-                </td>
-                <td>
-                  <button onClick={() => handleEdit(appointment)}>Edit</button>
-                  <button onClick={() => setAppointmentToDelete(appointment)}>
-                    Delete
-                  </button>
+            {patients.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="empty-state">
+                  No appointments found.
                 </td>
               </tr>
-            ))}
+            ) : (
+              appointments.map((appointment) => (
+                <tr key={appointment.id}>
+                  <td>{appointment.doctorName}</td>
+                  <td>{appointment.patientName}</td>
+                  <td>{new Date(appointment.appointmentDate).toLocaleString("es-ES", {dateStyle: "medium",timeStyle: "short"})}</td>
+                  <td>
+                    <span className="status">{appointment.status}</span>
+                  </td>
+                  {canEditAppointments && (
+                    <td>
+                      <button onClick={() => handleEdit(appointment)}>Edit</button>
+                      {canDeleteAppointments && (
+                        <button onClick={() => setAppointmentToDelete(appointment)}>
+                          Delete
+                        </button>
+                      )}
+                    </td>
+                  )}
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

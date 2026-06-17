@@ -117,7 +117,14 @@ function DashboardPage() {
           </thead>
 
           <tbody>
-            {nextAppointments.map((appointment) => (
+            {nextAppointments.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="empty-state">
+                  No appointments found.
+                </td>
+              </tr>
+            ) : (
+            nextAppointments.map((appointment) => (
               <tr key={appointment.id}>
                 <td>{appointment.doctorName}</td>
                 <td>{appointment.patientName}</td>
@@ -131,7 +138,7 @@ function DashboardPage() {
                   <span className="status">{appointment.status}</span>
                 </td>
               </tr>
-            ))}
+            )))}
           </tbody>
         </table>
       </div>

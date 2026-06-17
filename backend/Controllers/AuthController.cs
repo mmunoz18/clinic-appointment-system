@@ -48,6 +48,7 @@ public class AuthController : ControllerBase
             {
                 Name = request.Name,
                 Email = request.Email,
+                //Role = "Admin"
             };
 
             var passwordHasher = new PasswordHasher<User>();
@@ -95,7 +96,8 @@ public class AuthController : ControllerBase
             {
                 Token = token,
                 Email = user.Email,
-                Name = user.Name
+                Name = user.Name,
+                Role = user.Role
             });
         }
         catch (Exception ex)
@@ -114,14 +116,15 @@ public class AuthController : ControllerBase
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Name, user.Name),
-            new Claim(ClaimTypes.Email, user.Email)
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(ClaimTypes.Role, user.Role)
         };
 
         var token = new JwtSecurityToken(
             issuer: jwtSettings["Issuer"],
             audience: jwtSettings["Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(1),
+            expires: DateTime.UtcNow.AddHours(8),
             signingCredentials: credentials
         );
 

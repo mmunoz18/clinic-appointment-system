@@ -16,6 +16,9 @@ function DoctorsPage() {
   const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
   const [doctorToDelete, setDoctorToDelete] = useState<Doctor | null>(null);
 
+  const role = localStorage.getItem("role");
+  const canManageDoctors = role === "Admin";
+
   async function loadDoctors() {
     const data = await getDoctors();
     setDoctors(data);
@@ -83,42 +86,44 @@ function DoctorsPage() {
         <p>View and manage clinic doctors.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="form-card">
-        <h2>{editingDoctor ? "Edit Doctor" : "Add Doctor"}</h2>
+      {canManageDoctors && (
+        <form onSubmit={handleSubmit} className="form-card">
+          <h2>{editingDoctor ? "Edit Doctor" : "Add Doctor"}</h2>
 
-        <input
-          type="text"
-          placeholder="Doctor name"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          required
-        />
+          <input
+            type="text"
+            placeholder="Doctor name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            required
+          />
 
-        <input
-          type="text"
-          placeholder="Specialty"
-          value={specialty}
-          onChange={(event) => setSpecialty(event.target.value)}
-          required
-        />
+          <input
+            type="text"
+            placeholder="Specialty"
+            value={specialty}
+            onChange={(event) => setSpecialty(event.target.value)}
+            required
+          />
 
-        <button type="submit">
-          {editingDoctor ? "Update Doctor" : "Add Doctor"}
-        </button>
-
-        {editingDoctor && (
-          <button
-            type="button"
-            onClick={() => {
-              setEditingDoctor(null);
-              setName("");
-              setSpecialty("");
-            }}
-          >
-            Cancel
+          <button type="submit">
+            {editingDoctor ? "Update Doctor" : "Add Doctor"}
           </button>
-        )}
-      </form>
+
+          {editingDoctor && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditingDoctor(null);
+                setName("");
+                setSpecialty("");
+              }}
+            >
+              Cancel
+            </button>
+          )}
+        </form>
+      )}
 
       <div className="table-card">
         <table>
@@ -126,23 +131,32 @@ function DoctorsPage() {
             <tr>
               <th>Name</th>
               <th>Specialty</th>
-              <th>Actions</th>
+              {canManageDoctors && <th>Actions</th>}
             </tr>
           </thead>
 
           <tbody>
-            {doctors.map((doctor) => (
+            {doctors.length === 0 ? (
+                <tr>
+                    <td colSpan={3} className="empty-state">
+                        No doctors found.
+                    </td>
+                </tr>
+            ) : (
+            doctors.map((doctor) => (
               <tr key={doctor.id}>
                 <td>{doctor.name}</td>
                 <td>{doctor.specialty}</td>
-                <td>
-                  <button onClick={() => handleEdit(doctor)}>Edit</button>
-                  <button onClick={() => setDoctorToDelete(doctor)}>
-                    Delete
-                  </button>
-                </td>
+                {canManageDoctors && (
+                  <td>
+                    <button onClick={() => handleEdit(doctor)}>Edit</button>
+                    <button onClick={() => setDoctorToDelete(doctor)}>
+                      Delete
+                    </button>
+                  </td>
+                )}
               </tr>
-            ))}
+            )))}
           </tbody>
         </table>
       </div>

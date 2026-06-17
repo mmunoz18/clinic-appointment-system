@@ -24,6 +24,7 @@ function LoginPage() {
 
       localStorage.setItem("token", result.token);
       localStorage.setItem("userName", result.name);
+      localStorage.setItem("role", result.role);
 
       toast.success("Login successful");
 

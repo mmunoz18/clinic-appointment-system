@@ -19,6 +19,7 @@ public class DoctorsController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = "AllRoles")]
     public async Task<ActionResult<IEnumerable<Doctor>>> GetDoctors()
     {
         var doctors = await _context.Doctors.ToListAsync();
@@ -27,6 +28,7 @@ public class DoctorsController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [Authorize(Policy = "AllRoles")]
     public async Task<ActionResult<Doctor>> GetDoctor(int id)
     {
         var doctor = await _context.Doctors.FindAsync(id);
@@ -40,6 +42,7 @@ public class DoctorsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<Doctor>> CreateDoctor(Doctor doctor)
     {
         try
@@ -60,6 +63,7 @@ public class DoctorsController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> UpdateDoctor(int id, Doctor doctor)
     {
         try
@@ -90,6 +94,7 @@ public class DoctorsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> DeleteDoctor(int id)
     {
         try

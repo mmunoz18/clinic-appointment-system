@@ -19,6 +19,7 @@ public class AppointmentsController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = "AllRoles")]
     public async Task<ActionResult<IEnumerable<Appointment>>> GetAppointments()
     {
         var appointments = await _context.Appointments
@@ -40,6 +41,7 @@ public class AppointmentsController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [Authorize(Policy = "AllRoles")]
     public async Task<ActionResult<Appointment>> GetAppointment(int id)
     {
         var appointments = await _context.Appointments
@@ -66,6 +68,7 @@ public class AppointmentsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "AdminOrReceptionist")]
     public async Task<ActionResult<Appointment>> CreateAppointment(Appointment appointment)
     {
         try
@@ -92,6 +95,7 @@ public class AppointmentsController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Policy = "AllRoles")]
     public async Task<IActionResult> UpdateAppointment(int id, Appointment appointment)
     {
         try
@@ -130,6 +134,7 @@ public class AppointmentsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Policy = "AdminOrReceptionist")]
     public async Task<IActionResult> DeleteAppointment(int id)
     {
         try

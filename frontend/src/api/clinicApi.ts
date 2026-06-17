@@ -35,6 +35,7 @@ export type AuthResponse = {
   token: string;
   email: string;
   name: string;
+  role: string;
 }
 
 export type RegisterRequest = {
@@ -60,11 +61,20 @@ export type CreateAppointmentRequest = {
   status: string;
 };
 
+export type User = {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+};
+
 export async function getDoctors() {
   const response = await fetch(`${API_BASE_URL}/api/doctors`, {
     headers: getAuthHeaders(),
   });
 
+  handleUnauthorized(response);
+  
   if (!response.ok) {
     throw new Error("Failed to fetch doctors");
   }
@@ -77,6 +87,8 @@ export async function getPatients() {
     headers: getAuthHeaders(),
   });
 
+  handleUnauthorized(response);
+  
   if (!response.ok) {
     throw new Error("Failed to fetch patients");
   }
@@ -89,6 +101,8 @@ export async function getAppointments() {
     headers: getAuthHeaders(),
   });
 
+  handleUnauthorized(response);
+  
   if (!response.ok) {
     throw new Error("Failed to fetch appointments");
   }
@@ -103,6 +117,8 @@ export async function createDoctor(doctor: CreateDoctorRequest) {
     body: JSON.stringify(doctor),
   });
 
+  handleUnauthorized(response);
+  
   if (!response.ok) {
     throw new Error("Failed to create doctor");
   }
@@ -117,6 +133,8 @@ export async function updateDoctor(doctor: Doctor) {
     body: JSON.stringify(doctor),
   });
 
+  handleUnauthorized(response);
+  
   if (!response.ok) {
     throw new Error("Failed to update doctor");
   }
@@ -128,6 +146,8 @@ export async function deleteDoctor(id: number) {
     headers: getAuthHeaders(),
   });
 
+  handleUnauthorized(response);
+  
   if (!response.ok) {
     throw new Error("Failed to delete doctor");
   }
@@ -140,6 +160,8 @@ export async function createPatient(patient: CreatePatientRequest) {
     body: JSON.stringify(patient),
   });
 
+  handleUnauthorized(response);
+  
   if (!response.ok) {
     throw new Error("Failed to create patient");
   }
@@ -154,6 +176,8 @@ export async function updatePatient(patient: Patient) {
     body: JSON.stringify(patient),
   });
 
+  handleUnauthorized(response);
+  
   if (!response.ok) {
     throw new Error("Failed to update patient");
   }
@@ -165,6 +189,8 @@ export async function deletePatient(id: number) {
     headers: getAuthHeaders(),
   });
 
+  handleUnauthorized(response);
+  
   if (!response.ok) {
     throw new Error("Failed to delete patient");
   }
@@ -177,6 +203,8 @@ export async function createAppointment(appointment: CreateAppointmentRequest) {
     body: JSON.stringify(appointment),
   });
 
+  handleUnauthorized(response);
+  
   if (!response.ok) {
     throw new Error(await response.text());
   }
@@ -191,6 +219,8 @@ export async function updateAppointment(appointment: Appointment) {
     body: JSON.stringify(appointment),
   });
 
+  handleUnauthorized(response);
+  
   if (!response.ok) {
     throw new Error(await response.text());
   }
@@ -202,6 +232,8 @@ export async function deleteAppointment(id: number) {
     headers: getAuthHeaders(),
   });
 
+  handleUnauthorized(response);
+  
   if (!response.ok) {
     throw new Error("Failed to delete appointment");
   }
@@ -230,5 +262,44 @@ export async function register(user: RegisterRequest): Promise<void> {
 
   if (!response.ok) {
     throw new Error(await response.text());
+  }
+}
+
+export async function getUsers(): Promise<User[]> {
+  const response = await fetch(`${API_BASE_URL}/api/users`, {
+    headers: getAuthHeaders(),
+  });
+
+  handleUnauthorized(response);
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch users");
+  }
+
+  return response.json();
+}
+
+export async function updateUserRole(id: number, role: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/users/${id}/role`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ role }),
+  });
+
+  handleUnauthorized(response);
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+}
+
+function handleUnauthorized(response: Response) {
+  if (response.status === 401) {
+    localStorage.removeItem("token");
+    localStorage.removeItem("userName");
+    localStorage.removeItem("role");
+    window.location.href = "/login";
+
+    throw new Error("Session expired. Please log in again.");
   }
 }

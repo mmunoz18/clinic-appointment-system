@@ -2,10 +2,15 @@ import { NavLink, Outlet } from "react-router-dom";
 
 function Layout() {
   const userName = localStorage.getItem("userName");
+  const role = localStorage.getItem("role");
+  const isAdmin = role === "Admin";
+  const isReceptionist = role === "Receptionist";
+  const isDoctor = role === "Doctor";
   
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("userName");
+    localStorage.removeItem("role");
     window.location.href = "/login";
   };
   
@@ -17,9 +22,20 @@ function Layout() {
 
         <nav className="nav">
           <NavLink to="/">Dashboard</NavLink>
-          <NavLink to="/doctors">Doctors</NavLink>
-          <NavLink to="/patients">Patients</NavLink>
-          <NavLink to="/appointments">Appointments</NavLink>
+          {(isAdmin || isReceptionist) && (
+            <NavLink to="/doctors">Doctors</NavLink>
+          )}
+
+          {(isAdmin || isReceptionist) && (
+            <NavLink to="/patients">Patients</NavLink>
+          )}
+
+          {(isAdmin || isReceptionist || isDoctor) && (
+            <NavLink to="/appointments">Appointments</NavLink>
+          )}
+          {isAdmin && (
+            <NavLink to="/users">Users</NavLink>
+          )}
         </nav>
         <button className="logout-button" onClick={handleLogout}>
           Logout

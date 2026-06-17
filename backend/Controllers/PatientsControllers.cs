@@ -19,6 +19,7 @@ public class PatientsController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = "AdminOrReceptionist")]
     public async Task<ActionResult<IEnumerable<Patient>>> GetPatients()
     {
         var patients = await _context.Patients.ToListAsync();
@@ -27,6 +28,7 @@ public class PatientsController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [Authorize(Policy = "AdminOrReceptionist")]
     public async Task<ActionResult<Patient>> GetPatient(int id)
     {
         var patient = await _context.Patients.FindAsync(id);
@@ -40,6 +42,7 @@ public class PatientsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "AdminOrReceptionist")]
     public async Task<ActionResult<Patient>> CreatePatient(Patient patient)
     {
         try
@@ -60,6 +63,7 @@ public class PatientsController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Policy = "AdminOrReceptionist")]
     public async Task<IActionResult> UpdatePatient(int id, Patient patient)
     {
         try
@@ -90,6 +94,7 @@ public class PatientsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> DeletePatient(int id)
     {
         try
