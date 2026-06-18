@@ -82,6 +82,9 @@ namespace backend.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("DoctorId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -118,6 +121,9 @@ namespace backend.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("DoctorId")
+                        .IsUnique();
+
                     b.ToTable("Users");
                 });
 
@@ -138,6 +144,21 @@ namespace backend.Migrations
                     b.Navigation("Doctor");
 
                     b.Navigation("Patient");
+                });
+
+            modelBuilder.Entity("backend.Models.User", b =>
+                {
+                    b.HasOne("backend.Models.Doctor", "Doctor")
+                        .WithOne("User")
+                        .HasForeignKey("backend.Models.User", "DoctorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Doctor");
+                });
+
+            modelBuilder.Entity("backend.Models.Doctor", b =>
+                {
+                    b.Navigation("User");
                 });
 #pragma warning restore 612, 618
         }

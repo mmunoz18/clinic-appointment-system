@@ -11,4 +11,8 @@ public class User
     public string PasswordHash { get; set; } = string.Empty;
     
     public string Role { get; set; } = "Receptionist";
+
+    public int? DoctorId { get; set; }
+
+    public Doctor? Doctor { get; set; }
 }

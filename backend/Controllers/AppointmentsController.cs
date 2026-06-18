@@ -3,6 +3,7 @@ using backend.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace backend.Controllers;
 
@@ -22,7 +23,24 @@ public class AppointmentsController : ControllerBase
     [Authorize(Policy = "AllRoles")]
     public async Task<ActionResult<IEnumerable<Appointment>>> GetAppointments()
     {
-        var appointments = await _context.Appointments
+        var query = _context.Appointments
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (User.IsInRole("Doctor"))
+        {
+            var doctorId = await GetLoggedInDoctorIdAsync();
+            if (!doctorId.HasValue)
+            {
+                return StatusCode(
+                    StatusCodes.Status403Forbidden,
+                    "Your user account is not linked to a doctor profile. Contact an administrator.");
+            }
+
+            query = query.Where(a => a.DoctorId == doctorId.Value);
+        }
+
+        var appointments = await query
         .Include(a => a.Doctor)
         .Include(a => a.Patient)
         .Select(a => new
@@ -44,7 +62,24 @@ public class AppointmentsController : ControllerBase
     [Authorize(Policy = "AllRoles")]
     public async Task<ActionResult<Appointment>> GetAppointment(int id)
     {
-        var appointments = await _context.Appointments
+        var query = _context.Appointments
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (User.IsInRole("Doctor"))
+        {
+            var doctorId = await GetLoggedInDoctorIdAsync();
+            if (!doctorId.HasValue)
+            {
+                return StatusCode(
+                    StatusCodes.Status403Forbidden,
+                    "Your user account is not linked to a doctor profile. Contact an administrator.");
+            }
+
+            query = query.Where(a => a.DoctorId == doctorId.Value);
+        }
+
+        var appointments = await query
         .Include(a => a.Doctor)
         .Include(a => a.Patient)
         .Select(a => new
@@ -110,6 +145,22 @@ public class AppointmentsController : ControllerBase
             if (existingAppointment == null)
             {
                 return NotFound();
+            }
+
+            if (User.IsInRole("Doctor"))
+            {
+                var doctorId = await GetLoggedInDoctorIdAsync();
+                if (!doctorId.HasValue || existingAppointment.DoctorId != doctorId.Value)
+                {
+                    return Forbid();
+                }
+
+                if (appointment.DoctorId != existingAppointment.DoctorId ||
+                    appointment.PatientId != existingAppointment.PatientId ||
+                    appointment.AppointmentDate != existingAppointment.AppointmentDate)
+                {
+                    return BadRequest("Doctors can only update the status of their own appointments.");
+                }
             }
 
             var canEditError = ValidateAppointmentCanBeEdited(existingAppointment, appointment);
@@ -324,5 +375,21 @@ public class AppointmentsController : ControllerBase
         }
 
         return null;
+    }
+
+    private async Task<int?> GetLoggedInDoctorIdAsync()
+    {
+        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (!int.TryParse(userIdValue, out var userId))
+        {
+            return null;
+        }
+
+        return await _context.Users
+            .AsNoTracking()
+            .Where(user => user.Id == userId)
+            .Select(user => user.DoctorId)
+            .SingleOrDefaultAsync();
     }
 }

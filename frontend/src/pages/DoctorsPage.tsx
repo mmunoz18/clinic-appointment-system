@@ -31,7 +31,11 @@ function DoctorsPage() {
   }
 
   useEffect(() => {
-    loadDoctors();
+    async function loadDoctorsPage() {
+      await loadDoctors();
+    }
+
+    loadDoctorsPage();
   }, []);
 
   async function handleSubmit(event: React.FormEvent) {

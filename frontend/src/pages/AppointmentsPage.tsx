@@ -49,7 +49,11 @@ function AppointmentsPage() {
   }
 
   useEffect(() => {
-    loadData();
+    async function loadAppointmentsPage() {
+      await loadData();
+    }
+
+    loadAppointmentsPage();
   }, []);
 
   async function handleSubmit(event: React.FormEvent) {
@@ -214,7 +218,11 @@ function AppointmentsPage() {
                   <td>{appointment.patientName}</td>
                   <td>{new Date(appointment.appointmentDate).toLocaleString("es-ES", {dateStyle: "medium",timeStyle: "short"})}</td>
                   <td>
-                    <span className="status">{appointment.status}</span>
+                    <span
+                      className={`status status-${appointment.status.toLowerCase()}`}
+                    >
+                      {appointment.status}
+                    </span>
                   </td>
                   {canEditAppointments && (
                     <td>

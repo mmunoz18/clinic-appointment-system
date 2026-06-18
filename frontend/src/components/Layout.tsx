@@ -21,7 +21,7 @@ function Layout() {
         {userName && <p className="sidebar-user">Welcome, {userName}</p>}
 
         <nav className="nav">
-          <NavLink to="/">Dashboard</NavLink>
+          <NavLink to="/">{isDoctor ? "My Dashboard" : "Dashboard"}</NavLink>
           {(isAdmin || isReceptionist) && (
             <NavLink to="/doctors">Doctors</NavLink>
           )}
@@ -30,9 +30,11 @@ function Layout() {
             <NavLink to="/patients">Patients</NavLink>
           )}
 
-          {(isAdmin || isReceptionist || isDoctor) && (
+          {(isAdmin || isReceptionist) && (
             <NavLink to="/appointments">Appointments</NavLink>
           )}
+          {isDoctor && <NavLink to="/my-patients">My Patients</NavLink>}
+          {isDoctor && <NavLink to="/my-appointments">My Appointments</NavLink>}
           {isAdmin && (
             <NavLink to="/users">Users</NavLink>
           )}

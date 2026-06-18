@@ -21,12 +21,15 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> GetUsers()
     {
         var users = await _context.Users
+            .Include(u => u.Doctor)
             .Select(u => new
             {
                 u.Id,
                 u.Name,
                 u.Email,
-                u.Role
+                u.Role,
+                u.DoctorId,
+                DoctorName = u.Doctor != null ? u.Doctor.Name : null
             })
             .ToListAsync();
 
@@ -50,7 +53,30 @@ public class UsersController : ControllerBase
             return NotFound();
         }
 
+        if (request.Role == "Doctor")
+        {
+            if (!request.DoctorId.HasValue)
+            {
+                return BadRequest("A doctor profile must be assigned to users with the Doctor role.");
+            }
+
+            var doctorExists = await _context.Doctors.AnyAsync(d => d.Id == request.DoctorId.Value);
+            if (!doctorExists)
+            {
+                return BadRequest("The selected doctor does not exist.");
+            }
+
+            var doctorAlreadyAssigned = await _context.Users.AnyAsync(u =>
+                u.DoctorId == request.DoctorId.Value && u.Id != id);
+
+            if (doctorAlreadyAssigned)
+            {
+                return BadRequest("The selected doctor is already linked to another user.");
+            }
+        }
+
         user.Role = request.Role;
+        user.DoctorId = request.Role == "Doctor" ? request.DoctorId : null;
 
         await _context.SaveChangesAsync();
 
@@ -61,4 +87,5 @@ public class UsersController : ControllerBase
 public class UpdateUserRoleRequest
 {
     public string Role { get; set; } = string.Empty;
+    public int? DoctorId { get; set; }
 }

@@ -8,6 +8,8 @@ import AppointmentsPage from "./pages/AppointmentsPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import UsersPage from "./pages/UsersPage";
+import DoctorPatientsPage from "./pages/DoctorPatientsPage";
+import DoctorAppointmentsPage from "./pages/DoctorAppointmentsPage";
 
 function App() {
   return (
@@ -29,6 +31,8 @@ function App() {
           <Route path="patients" element={<PatientsPage />} />
           <Route path="appointments" element={<AppointmentsPage />} />
           <Route path="users" element={<UsersPage />} />
+          <Route path="my-patients" element={<DoctorPatientsPage />} />
+          <Route path="my-appointments" element={<DoctorAppointmentsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

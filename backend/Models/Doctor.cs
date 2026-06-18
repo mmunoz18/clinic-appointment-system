@@ -6,4 +6,5 @@ public class Doctor
     public string Name { get; set; } = "";
     public string Specialty { get; set; } = "";
     public string Cedula { get; set; } = "";
+    public User? User { get; set; }
 }

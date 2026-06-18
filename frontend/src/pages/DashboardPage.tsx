@@ -1,8 +1,19 @@
 import { useEffect, useState } from "react";
 import { getDoctors, getPatients, getAppointments, type Appointment } from "../api/clinicApi";
 import { toast } from "react-toastify";
+import DoctorDashboardPage from "./DoctorDashboardPage";
 
 function DashboardPage() {
+  const role = localStorage.getItem("role");
+
+  if (role === "Doctor") {
+    return <DoctorDashboardPage />;
+  }
+
+  return <ClinicDashboard />;
+}
+
+function ClinicDashboard() {
   const [doctorCount, setDoctorCount] = useState(0);
   const [patientCount, setPatientCount] = useState(0);
   const [appointmentCount, setAppointmentCount] = useState(0);
@@ -63,7 +74,11 @@ function DashboardPage() {
   }
 
   useEffect(() => {
-    loadData();
+    async function loadClinicDashboard() {
+      await loadData();
+    }
+
+    loadClinicDashboard();
   }, []);
 
   return (
@@ -142,7 +157,11 @@ function DashboardPage() {
                   })}
                 </td>
                 <td>
-                  <span className="status">{appointment.status}</span>
+                  <span
+                    className={`status status-${appointment.status.toLowerCase()}`}
+                  >
+                    {appointment.status}
+                  </span>
                 </td>
               </tr>
             )))}

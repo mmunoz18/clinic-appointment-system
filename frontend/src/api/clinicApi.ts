@@ -63,6 +63,25 @@ export type User = {
   name: string;
   email: string;
   role: string;
+  doctorId: number | null;
+  doctorName: string | null;
+};
+
+export type DoctorPatient = Patient & {
+  appointmentCount: number;
+  lastAppointmentDate: string;
+};
+
+export type DoctorDashboard = {
+  counts: {
+    myPatients: number;
+    todaysAppointments: number;
+    upcomingAppointments: number;
+    completedAppointments: number;
+    cancelledAppointments: number;
+  };
+  todaysAppointments: Appointment[];
+  upcomingAppointments: Appointment[];
 };
 
 function getAuthHeaders(): HeadersInit {
@@ -213,14 +232,42 @@ export async function getUsers(): Promise<User[]> {
   return handleResponse(response, "Failed to fetch users");
 }
 
-export async function updateUserRole(id: number, role: string): Promise<void> {
+export async function updateUserRole(
+  id: number,
+  role: string,
+  doctorId: number | null
+): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/api/users/${id}/role`, {
     method: "PUT",
     headers: getAuthHeaders(),
-    body: JSON.stringify({ role }),
+    body: JSON.stringify({ role, doctorId }),
   });
 
   return handleResponse(response, "Failed to update user role");
+}
+
+export async function getDoctorDashboard(): Promise<DoctorDashboard> {
+  const response = await fetch(`${API_BASE_URL}/api/doctor-dashboard`, {
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse(response, "Failed to fetch doctor dashboard");
+}
+
+export async function getDoctorPatients(): Promise<DoctorPatient[]> {
+  const response = await fetch(`${API_BASE_URL}/api/doctor-patients`, {
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse(response, "Failed to fetch your patients");
+}
+
+export async function getDoctorAppointments(): Promise<Appointment[]> {
+  const response = await fetch(`${API_BASE_URL}/api/doctor-appointments`, {
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse(response, "Failed to fetch your appointments");
 }
 
 async function handleResponse(response: Response, fallbackMessage: string) {
