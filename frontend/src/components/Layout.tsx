@@ -38,6 +38,9 @@ function Layout() {
           {isAdmin && (
             <NavLink to="/users">Users</NavLink>
           )}
+          {isAdmin && (
+            <NavLink to="/doctor-availability">Doctor Availability</NavLink>
+          )}
         </nav>
         <button className="logout-button" onClick={handleLogout}>
           Logout

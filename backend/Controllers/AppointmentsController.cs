@@ -147,6 +147,11 @@ public class AppointmentsController : ControllerBase
                 return NotFound();
             }
 
+            var appointmentDetailsChanged =
+                appointment.DoctorId != existingAppointment.DoctorId ||
+                appointment.PatientId != existingAppointment.PatientId ||
+                appointment.AppointmentDate != existingAppointment.AppointmentDate;
+
             if (User.IsInRole("Doctor"))
             {
                 var doctorId = await GetLoggedInDoctorIdAsync();
@@ -155,9 +160,7 @@ public class AppointmentsController : ControllerBase
                     return Forbid();
                 }
 
-                if (appointment.DoctorId != existingAppointment.DoctorId ||
-                    appointment.PatientId != existingAppointment.PatientId ||
-                    appointment.AppointmentDate != existingAppointment.AppointmentDate)
+                if (appointmentDetailsChanged)
                 {
                     return BadRequest("Doctors can only update the status of their own appointments.");
                 }
@@ -169,13 +172,21 @@ public class AppointmentsController : ControllerBase
                 return BadRequest(canEditError);
             }
 
-            var dateEditError = ValidateUpdatedAppointmentDate(appointment);
-            if (dateEditError != null)
+            if (appointmentDetailsChanged)
             {
-                return BadRequest(dateEditError);
+                var dateEditError = ValidateUpdatedAppointmentDate(appointment);
+                if (dateEditError != null)
+                {
+                    return BadRequest(dateEditError);
+                }
             }
 
-            var validationError = await ValidateAppointmentAsync(appointment, id, validateFutureDate: false);
+            var validationError = await ValidateAppointmentAsync(
+                appointment,
+                id,
+                validateFutureDate: false,
+                validateSchedulingDetails: appointmentDetailsChanged);
+
             if (validationError != null)
             {
                 return BadRequest(validationError);
@@ -220,7 +231,11 @@ public class AppointmentsController : ControllerBase
         }
     }
 
-    private async Task<string?> ValidateAppointmentAsync(Appointment appointment, int? appointmentId = null, bool validateFutureDate = true)
+    private async Task<string?> ValidateAppointmentAsync(
+        Appointment appointment,
+        int? appointmentId = null,
+        bool validateFutureDate = true,
+        bool validateSchedulingDetails = true)
     {
         var requiredFieldsError = ValidateAppointmentDetails(appointment);
         if (requiredFieldsError != null) return requiredFieldsError;
@@ -234,13 +249,21 @@ public class AppointmentsController : ControllerBase
             if (dateError != null) return dateError;
         }
 
+        if (!validateSchedulingDetails)
+        {
+            return null;
+        }
+
         var doctorError = await ValidateDoctorExistsAsync(appointment.DoctorId);
         if (doctorError != null) return doctorError;
 
         var patientError = await ValidatePatientExistsAsync(appointment.PatientId);
         if (patientError != null) return patientError;
 
-        var doctorAvailabilityError = await ValidateDoctorAvailabilityAsync(appointment, appointmentId);
+        var scheduleError = await ValidateAppointmentWithinDoctorAvailabilityAsync(appointment);
+        if (scheduleError != null) return scheduleError;
+
+        var doctorAvailabilityError = await ValidateDoctorAppointmentConflictAsync(appointment, appointmentId);
         if (doctorAvailabilityError != null) return doctorAvailabilityError;
 
         var patientAvailabilityError = await ValidatePatientAvailabilityAsync(appointment, appointmentId);
@@ -285,7 +308,31 @@ public class AppointmentsController : ControllerBase
         return null;
     }
 
-    private async Task<string?> ValidateDoctorAvailabilityAsync(Appointment appointment, int? appointmentId = null)
+    private async Task<string?> ValidateAppointmentWithinDoctorAvailabilityAsync(
+        Appointment appointment)
+    {
+        var appointmentTime = TimeOnly.FromDateTime(appointment.AppointmentDate);
+        var appointmentDay = appointment.AppointmentDate.DayOfWeek;
+
+        var isWithinAvailability = await _context.DoctorAvailabilities.AnyAsync(
+            availability =>
+                availability.DoctorId == appointment.DoctorId &&
+                availability.IsActive &&
+                availability.DayOfWeek == appointmentDay &&
+                appointmentTime >= availability.StartTime &&
+                appointmentTime < availability.EndTime);
+
+        if (!isWithinAvailability)
+        {
+            return "Doctor is not available at this date and time.";
+        }
+
+        return null;
+    }
+
+    private async Task<string?> ValidateDoctorAppointmentConflictAsync(
+        Appointment appointment,
+        int? appointmentId = null)
     {
         var hasConflict = await _context.Appointments.AnyAsync(a =>
             a.DoctorId == appointment.DoctorId &&

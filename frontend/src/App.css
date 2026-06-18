@@ -236,6 +236,62 @@ td button.activate-button:hover {
   color: #111827;
 }
 
+.availability-card {
+  max-width: 720px;
+  padding: 24px;
+  background: white;
+  border-radius: 14px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+.availability-doctor-select {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 24px;
+  font-weight: 600;
+}
+
+.availability-list {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.availability-day-card {
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+.availability-day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.availability-row {
+  display: grid;
+  grid-template-columns: 130px 24px 130px auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.availability-row + .availability-row {
+  margin-top: 10px;
+}
+
+.availability-unavailable {
+  margin: 0;
+  color: #6b7280;
+}
+
+.availability-separator {
+  color: #6b7280;
+  text-align: center;
+}
+
 input {
   background: white;
   color: #111827;
@@ -390,6 +446,14 @@ button:active {
   .card-grid,
   .doctor-card-grid {
     grid-template-columns: 1fr;
+  }
+
+  .availability-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .availability-separator {
+    display: none;
   }
 }
 

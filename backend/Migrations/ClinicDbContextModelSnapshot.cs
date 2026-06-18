@@ -73,6 +73,36 @@ namespace backend.Migrations
                     b.ToTable("Doctors");
                 });
 
+            modelBuilder.Entity("backend.Models.DoctorAvailability", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("DoctorId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<TimeOnly>("EndTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
+                    b.Property<TimeOnly>("StartTime")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DoctorId", "DayOfWeek");
+
+                    b.ToTable("DoctorAvailabilities");
+                });
+
             modelBuilder.Entity("backend.Models.Patient", b =>
                 {
                     b.Property<int>("Id")
@@ -166,8 +196,21 @@ namespace backend.Migrations
                     b.Navigation("Doctor");
                 });
 
+            modelBuilder.Entity("backend.Models.DoctorAvailability", b =>
+                {
+                    b.HasOne("backend.Models.Doctor", "Doctor")
+                        .WithMany("Availabilities")
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Doctor");
+                });
+
             modelBuilder.Entity("backend.Models.Doctor", b =>
                 {
+                    b.Navigation("Availabilities");
+
                     b.Navigation("User");
                 });
 #pragma warning restore 612, 618

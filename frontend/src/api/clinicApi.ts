@@ -86,6 +86,21 @@ export type DoctorDashboard = {
   upcomingAppointments: Appointment[];
 };
 
+export type DoctorAvailability = {
+  id: number;
+  doctorId: number;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  isActive: boolean;
+};
+
+export type DoctorAvailabilityRequest = {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+};
+
 function getAuthHeaders(): HeadersInit {
   const token = localStorage.getItem("token");
 
@@ -294,6 +309,55 @@ export async function getDoctorAppointments(): Promise<Appointment[]> {
   });
 
   return handleResponse(response, "Failed to fetch your appointments");
+}
+
+export async function getDoctorAvailability(
+  doctorId: number
+): Promise<DoctorAvailability[]> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/doctors/${doctorId}/availability`,
+    { headers: getAuthHeaders() }
+  );
+
+  return handleResponse(response, "Failed to fetch doctor availability");
+}
+
+export async function createDoctorAvailability(
+  doctorId: number,
+  availability: DoctorAvailabilityRequest
+): Promise<DoctorAvailability> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/doctors/${doctorId}/availability`,
+    {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(availability),
+    }
+  );
+
+  return handleResponse(response, "Failed to create doctor availability");
+}
+
+export async function updateDoctorAvailability(
+  id: number,
+  availability: DoctorAvailabilityRequest
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/doctor-availability/${id}`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(availability),
+  });
+
+  return handleResponse(response, "Failed to update doctor availability");
+}
+
+export async function deactivateDoctorAvailability(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/doctor-availability/${id}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse(response, "Failed to deactivate doctor availability");
 }
 
 async function handleResponse(response: Response, fallbackMessage: string) {

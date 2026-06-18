@@ -8,4 +8,5 @@ public class Doctor
     public string Cedula { get; set; } = "";
     public bool IsActive { get; set; } = true;
     public User? User { get; set; }
+    public ICollection<DoctorAvailability> Availabilities { get; set; } = [];
 }
