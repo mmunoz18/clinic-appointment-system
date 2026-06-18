@@ -27,7 +27,6 @@ public class DoctorDashboardController : ControllerBase
             return DoctorProfileNotLinked();
         }
 
-        var now = DateTime.Now;
         var today = DateTime.Today;
         var tomorrow = today.AddDays(1);
         var appointments = _context.Appointments
@@ -40,7 +39,7 @@ public class DoctorDashboardController : ControllerBase
             TodaysAppointments = await appointments.CountAsync(a =>
                 a.AppointmentDate >= today && a.AppointmentDate < tomorrow),
             UpcomingAppointments = await appointments.CountAsync(a =>
-                a.AppointmentDate > now && a.Status == "Scheduled"),
+                a.AppointmentDate >= tomorrow && a.Status == "Scheduled"),
             CompletedAppointments = await appointments.CountAsync(a => a.Status == "Completed"),
             CancelledAppointments = await appointments.CountAsync(a => a.Status == "Cancelled")
         };
@@ -51,7 +50,7 @@ public class DoctorDashboardController : ControllerBase
             .ToListAsync();
 
         var upcomingAppointments = await AppointmentQuery(doctorId.Value)
-            .Where(a => a.AppointmentDate > now && a.Status == "Scheduled")
+            .Where(a => a.AppointmentDate >= tomorrow && a.Status == "Scheduled")
             .OrderBy(a => a.AppointmentDate)
             .Take(10)
             .ToListAsync();

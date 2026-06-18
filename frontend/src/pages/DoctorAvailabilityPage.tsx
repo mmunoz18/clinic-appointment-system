@@ -6,6 +6,7 @@ import {
   deactivateDoctorAvailability,
   getDoctorAvailability,
   getDoctors,
+  getMyDoctorProfile,
   updateDoctorAvailability,
   type Doctor,
   type DoctorAvailability,
@@ -64,6 +65,8 @@ function DoctorAvailabilityPage() {
   const [removedAvailabilityIds, setRemovedAvailabilityIds] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
   const role = localStorage.getItem("role");
+  const isAdmin = role === "Admin";
+  const isDoctor = role === "Doctor";
 
   const loadDoctors = useCallback(async () => {
     try {
@@ -77,13 +80,34 @@ function DoctorAvailabilityPage() {
 
   useEffect(() => {
     async function loadPage() {
-      await loadDoctors();
+      if (isAdmin) {
+        await loadDoctors();
+        return;
+      }
+
+      if (isDoctor) {
+        try {
+          const doctor = await getMyDoctorProfile();
+          setDoctors([doctor]);
+          setDoctorId(String(doctor.id));
+
+          const availability = await getDoctorAvailability(doctor.id);
+          setRows(buildRows(availability));
+          setRemovedAvailabilityIds([]);
+        } catch (error) {
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Error loading your availability";
+          toast.error(message);
+        }
+      }
     }
 
     loadPage();
-  }, [loadDoctors]);
+  }, [isAdmin, isDoctor, loadDoctors]);
 
-  if (role !== "Admin") {
+  if (!isAdmin && !isDoctor) {
     return <Navigate to="/" replace />;
   }
 
@@ -222,26 +246,41 @@ function DoctorAvailabilityPage() {
   return (
     <section>
       <div className="page-header">
-        <h1>Doctor Availability</h1>
-        <p>Configure the weekly working hours used for appointment scheduling.</p>
+        <h1>{isDoctor ? "My Availability" : "Doctor Availability"}</h1>
+        <p>
+          {isDoctor
+            ? "Configure your weekly working hours for appointment scheduling."
+            : "Configure the weekly working hours used for appointment scheduling."}
+        </p>
       </div>
 
       <form className="availability-card" onSubmit={handleSave}>
-        <label className="availability-doctor-select">
-          <span>Select Doctor</span>
-          <select
-            value={doctorId}
-            onChange={(event) => handleDoctorChange(event.target.value)}
-            required
-          >
-            <option value="">Select doctor</option>
-            {doctors.map((doctor) => (
-              <option key={doctor.id} value={doctor.id}>
-                {doctor.name} — {doctor.specialty}
-              </option>
-            ))}
-          </select>
-        </label>
+        {isAdmin ? (
+          <label className="availability-doctor-select">
+            <span>Select Doctor</span>
+            <select
+              value={doctorId}
+              onChange={(event) => handleDoctorChange(event.target.value)}
+              required
+            >
+              <option value="">Select doctor</option>
+              {doctors.map((doctor) => (
+                <option key={doctor.id} value={doctor.id}>
+                  {doctor.name} — {doctor.specialty}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <div className="availability-profile-summary">
+            <span>Doctor Profile</span>
+            <strong>
+              {doctors[0]
+                ? `${doctors[0].name} — ${doctors[0].specialty}`
+                : "Loading doctor profile..."}
+            </strong>
+          </div>
+        )}
 
         <div className="availability-list">
           {rows.map((day) => (

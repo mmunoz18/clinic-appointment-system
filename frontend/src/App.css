@@ -251,6 +251,27 @@ td button.activate-button:hover {
   font-weight: 600;
 }
 
+.availability-profile-summary {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 24px;
+  padding: 14px;
+  border-radius: 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+}
+
+.availability-profile-summary span {
+  color: #6b7280;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.availability-profile-summary strong {
+  color: #1e3a8a;
+}
+
 .availability-list {
   display: grid;
   gap: 12px;
@@ -347,6 +368,18 @@ select {
   border-radius: 8px;
   padding: 12px;
   margin-bottom: 16px;
+}
+
+.muted-text {
+  color: #9ca3af;
+}
+
+.user-access-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
 }
 
 .logout-button {
@@ -459,7 +492,7 @@ button:active {
 }
 
 .notes-section {
-  max-width: 900px;
+  max-width: none;
 }
 
 .notes-header h2 {
@@ -472,6 +505,7 @@ button:active {
 }
 
 .note-form {
+  width: 100%;
   display: grid;
   gap: 10px;
   padding: 20px;
@@ -479,6 +513,41 @@ button:active {
   background: white;
   border-radius: 14px;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+.appointment-doctor-field {
+  display: grid;
+  gap: 10px;
+  min-width: 280px;
+}
+
+.appointment-doctor-field > select {
+  width: 100%;
+}
+
+.appointment-availability-preview {
+  min-width: 320px;
+  padding: 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  background: #eff6ff;
+}
+
+.appointment-availability-preview > strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #1e3a8a;
+}
+
+.appointment-availability-preview p {
+  margin: 4px 0;
+  color: #475569;
+  font-size: 13px;
+}
+
+.appointment-availability-days span {
+  font-weight: 600;
+  color: #334155;
 }
 
 .note-form label {

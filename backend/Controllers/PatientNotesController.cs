@@ -46,7 +46,7 @@ public class PatientNotesController : ControllerBase
         }
 
         var notes = await notesQuery
-            .OrderByDescending(note => note.CreatedAt)
+            .OrderByDescending(note => note.Id)
             .Select(note => new
             {
                 note.Id,
@@ -91,7 +91,7 @@ public class PatientNotesController : ControllerBase
                 "Your user account is not linked to a doctor profile.");
         }
 
-        var now = DateTime.UtcNow;
+        var now = DateTimeOffset.UtcNow;
         var note = new PatientNote
         {
             PatientId = patientId,
@@ -154,7 +154,7 @@ public class PatientNotesController : ControllerBase
         }
 
         note.Note = request.Note.Trim();
-        note.UpdatedAt = DateTime.UtcNow;
+        note.UpdatedAt = DateTimeOffset.UtcNow;
 
         await _context.SaveChangesAsync();
 

@@ -35,8 +35,9 @@ function Layout() {
           )}
           {isDoctor && <NavLink to="/my-patients">My Patients</NavLink>}
           {isDoctor && <NavLink to="/my-appointments">My Appointments</NavLink>}
+          {isDoctor && <NavLink to="/my-availability">My Availability</NavLink>}
           {isAdmin && (
-            <NavLink to="/users">Users</NavLink>
+            <NavLink to="/users">User Access</NavLink>
           )}
           {isAdmin && (
             <NavLink to="/doctor-availability">Doctor Availability</NavLink>

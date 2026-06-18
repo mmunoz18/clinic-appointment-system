@@ -341,6 +341,14 @@ export async function getDoctorAvailability(
   return handleResponse(response, "Failed to fetch doctor availability");
 }
 
+export async function getMyDoctorProfile(): Promise<Doctor> {
+  const response = await fetch(`${API_BASE_URL}/api/doctor-profile`, {
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse(response, "Failed to fetch your doctor profile");
+}
+
 export async function createDoctorAvailability(
   doctorId: number,
   availability: DoctorAvailabilityRequest

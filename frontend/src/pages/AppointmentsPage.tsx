@@ -3,11 +3,13 @@ import {
   createAppointment,
   deleteAppointment,
   getAppointments,
+  getDoctorAvailability,
   getDoctors,
   getPatients,
   updateAppointment,
   type Appointment,
   type Doctor,
+  type DoctorAvailability,
   type Patient,
 } from "../api/clinicApi";
 import { toast } from "react-toastify";
@@ -17,6 +19,10 @@ function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [doctorAvailability, setDoctorAvailability] = useState<
+    DoctorAvailability[]
+  >([]);
+  const [loadingAvailability, setLoadingAvailability] = useState(false);
 
   const [doctorId, setDoctorId] = useState("");
   const [patientId, setPatientId] = useState("");
@@ -55,6 +61,34 @@ function AppointmentsPage() {
 
     loadAppointmentsPage();
   }, []);
+
+  useEffect(() => {
+    async function loadSelectedDoctorAvailability() {
+      if (!doctorId) {
+        setDoctorAvailability([]);
+        return;
+      }
+
+      setLoadingAvailability(true);
+
+      try {
+        setDoctorAvailability(
+          await getDoctorAvailability(Number(doctorId))
+        );
+      } catch (error) {
+        setDoctorAvailability([]);
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Error loading doctor availability";
+        toast.error(message);
+      } finally {
+        setLoadingAvailability(false);
+      }
+    }
+
+    loadSelectedDoctorAvailability();
+  }, [doctorId]);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -128,18 +162,30 @@ function AppointmentsPage() {
         <form onSubmit={handleSubmit} className="form-card">
           <h2>{editingAppointment ? "Edit Appointment" : "Add Appointment"}</h2>
 
-          <select
-            value={doctorId}
-            onChange={(event) => setDoctorId(event.target.value)}
-            required
-          >
-            <option value="">Select doctor</option>
-            {doctors.map((doctor) => (
-              <option key={doctor.id} value={doctor.id}>
-                {doctor.name} - {doctor.specialty}
-              </option>
-            ))}
-          </select>
+          <div className="appointment-doctor-field">
+            <select
+              value={doctorId}
+              onChange={(event) => setDoctorId(event.target.value)}
+              required
+            >
+              <option value="">Select doctor</option>
+              {doctors.map((doctor) => (
+                <option key={doctor.id} value={doctor.id}>
+                  {doctor.name} - {doctor.specialty}
+                </option>
+              ))}
+            </select>
+
+            {doctorId && (
+              <DoctorAvailabilityPreview
+                doctor={doctors.find(
+                  (doctor) => doctor.id === Number(doctorId)
+                )}
+                availability={doctorAvailability}
+                loading={loadingAvailability}
+              />
+            )}
+          </div>
 
           <select
             value={patientId}
@@ -261,3 +307,57 @@ function AppointmentsPage() {
 }
 
 export default AppointmentsPage;
+
+const availabilityDays = [
+  { dayOfWeek: 1, label: "Monday" },
+  { dayOfWeek: 2, label: "Tuesday" },
+  { dayOfWeek: 3, label: "Wednesday" },
+  { dayOfWeek: 4, label: "Thursday" },
+  { dayOfWeek: 5, label: "Friday" },
+  { dayOfWeek: 6, label: "Saturday" },
+  { dayOfWeek: 0, label: "Sunday" },
+];
+
+type DoctorAvailabilityPreviewProps = {
+  doctor?: Doctor;
+  availability: DoctorAvailability[];
+  loading: boolean;
+};
+
+function DoctorAvailabilityPreview({
+  doctor,
+  availability,
+  loading,
+}: DoctorAvailabilityPreviewProps) {
+  return (
+    <div className="appointment-availability-preview">
+      <strong>{doctor?.name ?? "Doctor"} availability</strong>
+
+      {loading ? (
+        <p>Loading availability...</p>
+      ) : (
+        <div className="appointment-availability-days">
+          {availabilityDays.map((day) => {
+            const windows = availability
+              .filter((item) => item.dayOfWeek === day.dayOfWeek)
+              .sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+            return (
+              <p key={day.dayOfWeek}>
+                <span>{day.label}:</span>{" "}
+                {windows.length === 0
+                  ? "Unavailable"
+                  : windows
+                      .map(
+                        (window) =>
+                          `${window.startTime.slice(0, 5)}-${window.endTime.slice(0, 5)}`
+                      )
+                      .join(", ")}
+              </p>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}

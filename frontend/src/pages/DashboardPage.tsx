@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getDoctors, getPatients, getAppointments, type Appointment } from "../api/clinicApi";
 import { toast } from "react-toastify";
 import DoctorDashboardPage from "./DoctorDashboardPage";
+import AppointmentTable from "../components/AppointmentTable";
 
 function DashboardPage() {
   const role = localStorage.getItem("role");
@@ -20,17 +21,30 @@ function ClinicDashboard() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
 
   const now = new Date();
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate()
+  );
+  const startOfTomorrow = new Date(startOfToday);
+  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
 
   const todaysAppointments = appointments.filter((appointment) => {
     const appointmentDate = new Date(appointment.appointmentDate);
 
-    return appointmentDate.toDateString() === now.toDateString();
+    return (
+      appointmentDate >= startOfToday &&
+      appointmentDate < startOfTomorrow
+    );
   });
 
   const upcomingAppointments = appointments.filter((appointment) => {
     const appointmentDate = new Date(appointment.appointmentDate);
 
-    return appointmentDate > now && appointment.status !== "Cancelled";
+    return (
+      appointmentDate >= startOfTomorrow &&
+      appointment.status === "Scheduled"
+    );
   });
 
   const completedAppointments = appointments.filter(
@@ -41,18 +55,19 @@ function ClinicDashboard() {
     (appointment) => appointment.status === "Cancelled"
   );
 
-  const nextAppointments = [...appointments]
-  .filter(
-    (appointment) =>
-      new Date(appointment.appointmentDate) > now &&
-      appointment.status === "Scheduled"
-  )
-  .sort(
+  const sortedTodayAppointments = [...todaysAppointments].sort(
     (a, b) =>
       new Date(a.appointmentDate).getTime() -
       new Date(b.appointmentDate).getTime()
-  )
-  .slice(0, 5);
+  );
+
+  const nextAppointments = [...upcomingAppointments]
+    .sort(
+      (a, b) =>
+        new Date(a.appointmentDate).getTime() -
+        new Date(b.appointmentDate).getTime()
+    )
+    .slice(0, 5);
 
   async function loadData() {
     try {
@@ -126,47 +141,21 @@ function ClinicDashboard() {
       </div>
 
       <div className="table-card">
+        <h2>Today&apos;s Appointments</h2>
+        <AppointmentTable
+          appointments={sortedTodayAppointments}
+          emptyMessage="No appointments scheduled for today."
+          showDoctor
+        />
+      </div>
+
+      <div className="table-card">
         <h2>Upcoming Appointments</h2>
-
-        <table>
-          <thead>
-            <tr>
-              <th>Doctor</th>
-              <th>Patient</th>
-              <th>Date</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {nextAppointments.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="empty-state">
-                  No appointments found.
-                </td>
-              </tr>
-            ) : (
-            nextAppointments.map((appointment) => (
-              <tr key={appointment.id}>
-                <td>{appointment.doctorName}</td>
-                <td>{appointment.patientName}</td>
-                <td>
-                  {new Date(appointment.appointmentDate).toLocaleString("es-CR", {
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                  })}
-                </td>
-                <td>
-                  <span
-                    className={`status status-${appointment.status.toLowerCase()}`}
-                  >
-                    {appointment.status}
-                  </span>
-                </td>
-              </tr>
-            )))}
-          </tbody>
-        </table>
+        <AppointmentTable
+          appointments={nextAppointments}
+          emptyMessage="No upcoming appointments."
+          showDoctor
+        />
       </div>
     </section>
   );

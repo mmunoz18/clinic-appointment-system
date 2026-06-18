@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using backend.Data;
 using backend.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -7,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace backend.Controllers;
 
 [ApiController]
-[Authorize(Policy = "AdminOnly")]
+[Authorize]
 public class DoctorAvailabilityController : ControllerBase
 {
     private readonly ClinicDbContext _context;
@@ -18,6 +19,7 @@ public class DoctorAvailabilityController : ControllerBase
     }
 
     [HttpGet("/api/doctors/{doctorId}/availability")]
+    [Authorize(Policy = "AllRoles")]
     public async Task<IActionResult> GetDoctorAvailability(int doctorId)
     {
         var doctorExists = await _context.Doctors
@@ -39,11 +41,51 @@ public class DoctorAvailabilityController : ControllerBase
         return Ok(availability);
     }
 
+    [HttpGet("/api/doctor-profile")]
+    [Authorize(Roles = "Doctor")]
+    public async Task<IActionResult> GetLoggedInDoctorProfile()
+    {
+        var doctorId = await GetLoggedInDoctorIdAsync();
+
+        if (!doctorId.HasValue)
+        {
+            return StatusCode(
+                StatusCodes.Status403Forbidden,
+                "Your user account is not linked to a doctor profile.");
+        }
+
+        var doctor = await _context.Doctors
+            .AsNoTracking()
+            .Where(doctor => doctor.Id == doctorId.Value)
+            .Select(doctor => new
+            {
+                doctor.Id,
+                doctor.Name,
+                doctor.Specialty,
+                doctor.Cedula,
+                doctor.IsActive
+            })
+            .SingleOrDefaultAsync();
+
+        if (doctor == null)
+        {
+            return NotFound("Doctor profile not found.");
+        }
+
+        return Ok(doctor);
+    }
+
     [HttpPost("/api/doctors/{doctorId}/availability")]
+    [Authorize(Policy = "AllRoles")]
     public async Task<IActionResult> CreateDoctorAvailability(
         int doctorId,
         [FromBody] DoctorAvailabilityRequest request)
     {
+        if (!await CanEditAvailabilityAsync(doctorId))
+        {
+            return Forbid();
+        }
+
         var doctorIsActive = await _context.Doctors.AnyAsync(doctor =>
             doctor.Id == doctorId && doctor.IsActive);
 
@@ -76,6 +118,7 @@ public class DoctorAvailabilityController : ControllerBase
     }
 
     [HttpPut("/api/doctor-availability/{id}")]
+    [Authorize(Policy = "AllRoles")]
     public async Task<IActionResult> UpdateDoctorAvailability(
         int id,
         [FromBody] DoctorAvailabilityRequest request)
@@ -85,6 +128,11 @@ public class DoctorAvailabilityController : ControllerBase
         if (availability == null)
         {
             return NotFound("Doctor availability not found.");
+        }
+
+        if (!await CanEditAvailabilityAsync(availability.DoctorId))
+        {
+            return Forbid();
         }
 
         var doctorIsActive = await _context.Doctors.AnyAsync(doctor =>
@@ -116,6 +164,7 @@ public class DoctorAvailabilityController : ControllerBase
     }
 
     [HttpDelete("/api/doctor-availability/{id}")]
+    [Authorize(Policy = "AllRoles")]
     public async Task<IActionResult> DeactivateDoctorAvailability(int id)
     {
         var availability = await _context.DoctorAvailabilities.FindAsync(id);
@@ -123,6 +172,11 @@ public class DoctorAvailabilityController : ControllerBase
         if (availability == null)
         {
             return NotFound("Doctor availability not found.");
+        }
+
+        if (!await CanEditAvailabilityAsync(availability.DoctorId))
+        {
+            return Forbid();
         }
 
         availability.IsActive = false;
@@ -165,6 +219,40 @@ public class DoctorAvailabilityController : ControllerBase
         }
 
         return null;
+    }
+
+    private async Task<bool> CanEditAvailabilityAsync(int doctorId)
+    {
+        if (User.IsInRole("Admin"))
+        {
+            return true;
+        }
+
+        if (!User.IsInRole("Doctor"))
+        {
+            return false;
+        }
+
+        var loggedInDoctorId = await GetLoggedInDoctorIdAsync();
+
+        return loggedInDoctorId.HasValue &&
+            loggedInDoctorId.Value == doctorId;
+    }
+
+    private async Task<int?> GetLoggedInDoctorIdAsync()
+    {
+        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (!int.TryParse(userIdValue, out var userId))
+        {
+            return null;
+        }
+
+        return await _context.Users
+            .AsNoTracking()
+            .Where(user => user.Id == userId)
+            .Select(user => user.DoctorId)
+            .SingleOrDefaultAsync();
     }
 }
 
