@@ -10,6 +10,11 @@ import {
 import { toast } from "react-toastify";
 import ConfirmModal from "../components/ConfirmModal";
 import { Link } from "react-router-dom";
+import EmptyState from "../components/EmptyState";
+import FormActions from "../components/FormActions";
+import FormCard from "../components/FormCard";
+import Modal from "../components/Modal";
+import StatusBadge from "../components/StatusBadge";
 
 function PatientsPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -18,6 +23,8 @@ function PatientsPage() {
   const [cedula, setCedula] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [patientToDeactivate, setPatientToDeactivate] = useState<Patient | null>(null);
 
   const role = localStorage.getItem("role");
@@ -26,6 +33,20 @@ function PatientsPage() {
   const canDeletePatients = role === "Admin";
   const canViewNotes = role === "Admin";
   const showPatientActions = canEditPatients || canDeletePatients;
+  const requiredFieldsComplete =
+    name.trim() !== "" &&
+    email.trim() !== "" &&
+    cedula.trim() !== "";
+  const patientChanged =
+    editingPatient == null ||
+    name.trim() !== editingPatient.name ||
+    email.trim() !== editingPatient.email ||
+    cedula.trim() !== editingPatient.cedula ||
+    phoneNumber.trim() !== (editingPatient.phoneNumber ?? "");
+  const saveDisabled =
+    !requiredFieldsComplete ||
+    !patientChanged ||
+    saving;
 
   const loadPatients = useCallback(async () => {
     try {
@@ -48,45 +69,64 @@ function PatientsPage() {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
+    if (saveDisabled) {
+      return;
+    }
+
+    setSaving(true);
+
     try {
-        if (editingPatient) {
+      if (editingPatient) {
         await updatePatient({
-            id: editingPatient.id,
-            name,
-            email,
-            cedula,
-            phoneNumber,
-            isActive: editingPatient.isActive,
+          id: editingPatient.id,
+          name: name.trim(),
+          email: email.trim(),
+          cedula: cedula.trim(),
+          phoneNumber: phoneNumber.trim(),
+          isActive: editingPatient.isActive,
         });
         toast.success("Patient updated successfully");
-        } else {
+      } else {
         await createPatient({
-            name,
-            email,
-            cedula,
-            phoneNumber,
+          name: name.trim(),
+          email: email.trim(),
+          cedula: cedula.trim(),
+          phoneNumber: phoneNumber.trim(),
         });
         toast.success("Patient created successfully");
-        }
+      }
 
-        setName("");
-        setEmail("");
-        setCedula("");
-        setPhoneNumber("");
-        setEditingPatient(null);
-        await loadPatients();
+      clearPatientForm();
+      await loadPatients();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error saving patient";
       toast.error(message);
+    } finally {
+      setSaving(false);
     }
   }
 
-  async function handleEditPatient(patient: Patient) {
+  function handleAddPatient() {
+    clearPatientForm();
+    setIsFormOpen(true);
+  }
+
+  function handleEditPatient(patient: Patient) {
     setEditingPatient(patient);
     setName(patient.name);
     setEmail(patient.email);
     setCedula(patient.cedula);
-    setPhoneNumber(patient.phoneNumber);
+    setPhoneNumber(patient.phoneNumber ?? "");
+    setIsFormOpen(true);
+  }
+
+  function clearPatientForm() {
+    setEditingPatient(null);
+    setName("");
+    setEmail("");
+    setCedula("");
+    setPhoneNumber("");
+    setIsFormOpen(false);
   }
 
   async function confirmDeactivatePatient() {
@@ -98,6 +138,7 @@ function PatientsPage() {
       await deactivatePatient(patientToDeactivate.id);
       toast.success("Patient deactivated successfully");
       setPatientToDeactivate(null);
+      clearPatientForm();
       await loadPatients();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error deactivating patient";
@@ -109,6 +150,7 @@ function PatientsPage() {
     try {
       await activatePatient(patient.id);
       toast.success("Patient activated successfully");
+      clearPatientForm();
       await loadPatients();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error activating patient";
@@ -124,58 +166,74 @@ function PatientsPage() {
         </div>
 
 
-        {canManagePatients && (
-          <form onSubmit={handleSubmit} className="form-card">
-              <h2>{editingPatient ? "Edit Patient" : "Add Patient"}</h2>
+        {canManagePatients && !isFormOpen && (
+          <button
+            type="button"
+            className="add-record-button"
+            onClick={handleAddPatient}
+          >
+            + Add Patient
+          </button>
+        )}
 
-              <input
-              type="text"
-              placeholder="Patient name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              required
-              />
+        {canManagePatients && isFormOpen && (
+          <Modal
+            titleId="patient-form-modal-title"
+            title={editingPatient ? "Edit Patient" : "Add Patient"}
+            onClose={() => {
+              if (!saving) {
+                clearPatientForm();
+              }
+            }}
+          >
+            <FormCard onSubmit={handleSubmit}>
+              <label>
+                <span>Name</span>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  required
+                />
+              </label>
 
-              <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
-              />
-              
-              <input
-              type="text"
-              placeholder="Cedula"
-              value={cedula}
-              onChange={(event) => setCedula(event.target.value)}
-              required
-              />
-              
-              <input
-              type="text"
-              placeholder="Phone Number"
-              value={phoneNumber}
-              onChange={(event) => setPhoneNumber(event.target.value)}
-              />
+              <label>
+                <span>Email</span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  required
+                />
+              </label>
 
-              <button type="submit">{editingPatient ? "Update Patient" : "Add Patient"}</button>
-              
-              {editingPatient && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingPatient(null);
-                    setName("");
-                    setEmail("");
-                    setCedula("");
-                    setPhoneNumber("");
-                  }}
-                >
-                  Cancel
-                </button>
-              )}
-          </form>
+              <label>
+                <span>Cedula</span>
+                <input
+                  type="text"
+                  value={cedula}
+                  onChange={(event) => setCedula(event.target.value)}
+                  required
+                />
+              </label>
+
+              <label>
+                <span>Phone</span>
+                <input
+                  type="text"
+                  value={phoneNumber}
+                  onChange={(event) => setPhoneNumber(event.target.value)}
+                />
+              </label>
+
+              <FormActions
+                saving={saving}
+                saveDisabled={saveDisabled}
+                onCancel={clearPatientForm}
+                saveText={editingPatient ? "Update Patient" : "Save Patient"}
+              />
+            </FormCard>
+          </Modal>
         )}
 
         <div className="table-card">
@@ -193,16 +251,12 @@ function PatientsPage() {
             </thead>
             <tbody>
             {patients.length === 0 ? (
-                <tr>
-                    <td
-                      colSpan={
-                        5 + (canViewNotes ? 1 : 0) + (showPatientActions ? 1 : 0)
-                      }
-                      className="empty-state"
-                    >
-                        No patients found.
-                    </td>
-                </tr>
+              <EmptyState
+                message="No patients found."
+                colSpan={
+                  5 + (canViewNotes ? 1 : 0) + (showPatientActions ? 1 : 0)
+                }
+              />
             ) : (
             patients.map((patient) => (
               <tr key={patient.id}>
@@ -211,13 +265,7 @@ function PatientsPage() {
                 <td>{patient.cedula}</td>
                 <td>{patient.phoneNumber}</td>
                 <td>
-                  <span
-                    className={`entity-status ${
-                      patient.isActive ? "entity-status-active" : "entity-status-inactive"
-                    }`}
-                  >
-                    {patient.isActive ? "Active" : "Inactive"}
-                  </span>
+                  <StatusBadge active={patient.isActive} />
                 </td>
                 {canViewNotes && (
                   <td>

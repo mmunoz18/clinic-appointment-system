@@ -81,6 +81,9 @@ public class PatientsController : ControllerBase
             patient.Name = patient.Name.Trim();
             patient.Email = patient.Email.Trim().ToLower();
             patient.Cedula = patient.Cedula.Trim();
+            patient.PhoneNumber = string.IsNullOrWhiteSpace(patient.PhoneNumber)
+                ? null
+                : patient.PhoneNumber.Trim();
             patient.IsActive = true;
 
             _context.Patients.Add(patient);
@@ -125,6 +128,9 @@ public class PatientsController : ControllerBase
             existingPatient.Name = patient.Name.Trim();
             existingPatient.Email = patient.Email.Trim().ToLower();
             existingPatient.Cedula = patient.Cedula.Trim();
+            existingPatient.PhoneNumber = string.IsNullOrWhiteSpace(patient.PhoneNumber)
+                ? null
+                : patient.PhoneNumber.Trim();
 
             await _context.SaveChangesAsync();
 
