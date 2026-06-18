@@ -9,6 +9,11 @@ import {
 } from "../api/clinicApi";
 import { toast } from "react-toastify";
 import ConfirmModal from "../components/ConfirmModal";
+import EmptyState from "../components/EmptyState";
+import FormActions from "../components/FormActions";
+import FormCard from "../components/FormCard";
+import Modal from "../components/Modal";
+import StatusBadge from "../components/StatusBadge";
 
 function DoctorsPage() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -16,10 +21,25 @@ function DoctorsPage() {
   const [specialty, setSpecialty] = useState("");
   const [cedula, setCedula] = useState("");
   const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [doctorToDeactivate, setDoctorToDeactivate] = useState<Doctor | null>(null);
 
   const role = localStorage.getItem("role");
   const canManageDoctors = role === "Admin";
+  const requiredFieldsComplete =
+    name.trim() !== "" &&
+    specialty.trim() !== "" &&
+    cedula.trim() !== "";
+  const doctorChanged =
+    editingDoctor == null ||
+    name.trim() !== editingDoctor.name ||
+    specialty.trim() !== editingDoctor.specialty ||
+    cedula.trim() !== editingDoctor.cedula;
+  const saveDisabled =
+    !requiredFieldsComplete ||
+    !doctorChanged ||
+    saving;
 
   const loadDoctors = useCallback(async () => {
     try {
@@ -42,34 +62,44 @@ function DoctorsPage() {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
+    if (saveDisabled) {
+      return;
+    }
+
+    setSaving(true);
+
     try {
-        if (editingDoctor) {
+      if (editingDoctor) {
         await updateDoctor({
-            id: editingDoctor.id,
-            name,
-            specialty,
-            cedula,
-            isActive: editingDoctor.isActive,
+          id: editingDoctor.id,
+          name: name.trim(),
+          specialty: specialty.trim(),
+          cedula: cedula.trim(),
+          isActive: editingDoctor.isActive,
         });
         toast.success("Doctor updated successfully");
-        } else {
+      } else {
         await createDoctor({
-            name,
-            specialty,
-            cedula,
+          name: name.trim(),
+          specialty: specialty.trim(),
+          cedula: cedula.trim(),
         });
         toast.success("Doctor created successfully");
-        }
+      }
 
-        setName("");
-        setSpecialty("");
-        setCedula("");
-        setEditingDoctor(null);
-        await loadDoctors();
+      clearDoctorForm();
+      await loadDoctors();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error saving doctor";
       toast.error(message);
+    } finally {
+      setSaving(false);
     }
+  }
+
+  function handleAddDoctor() {
+    clearDoctorForm();
+    setIsFormOpen(true);
   }
 
   function handleEdit(doctor: Doctor) {
@@ -77,6 +107,7 @@ function DoctorsPage() {
     setName(doctor.name);
     setSpecialty(doctor.specialty);
     setCedula(doctor.cedula);
+    setIsFormOpen(true);
   }
 
   function clearDoctorForm() {
@@ -84,6 +115,7 @@ function DoctorsPage() {
     setName("");
     setSpecialty("");
     setCedula("");
+    setIsFormOpen(false);
   }
 
   async function confirmDeactivateDoctor() {
@@ -122,48 +154,65 @@ function DoctorsPage() {
         <p>View and manage clinic doctors.</p>
       </div>
 
-      {canManageDoctors && (
-        <form onSubmit={handleSubmit} className="form-card">
-          <h2>{editingDoctor ? "Edit Doctor" : "Add Doctor"}</h2>
+      {canManageDoctors && !isFormOpen && (
+        <button
+          type="button"
+          className="add-record-button"
+          onClick={handleAddDoctor}
+        >
+          + Add Doctor
+        </button>
+      )}
 
-          <input
-            type="text"
-            placeholder="Doctor name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            required
-          />
+      {canManageDoctors && isFormOpen && (
+        <Modal
+          titleId="doctor-form-modal-title"
+          title={editingDoctor ? "Edit Doctor" : "Add Doctor"}
+          onClose={() => {
+            if (!saving) {
+              clearDoctorForm();
+            }
+          }}
+        >
+          <FormCard onSubmit={handleSubmit}>
+            <label>
+              <span>Name</span>
+              <input
+                type="text"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                required
+              />
+            </label>
 
-          <input
-            type="text"
-            placeholder="Specialty"
-            value={specialty}
-            onChange={(event) => setSpecialty(event.target.value)}
-            required
-          />
+            <label>
+              <span>Specialty</span>
+              <input
+                type="text"
+                value={specialty}
+                onChange={(event) => setSpecialty(event.target.value)}
+                required
+              />
+            </label>
 
-          <input
-            type="text"
-            placeholder="Cedula"
-            value={cedula}
-            onChange={(event) => setCedula(event.target.value)}
-            required
-          />
+            <label>
+              <span>Cedula</span>
+              <input
+                type="text"
+                value={cedula}
+                onChange={(event) => setCedula(event.target.value)}
+                required
+              />
+            </label>
 
-          <button type="submit">
-            {editingDoctor ? "Update Doctor" : "Add Doctor"}
-          </button>
-
-          {editingDoctor && (
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={clearDoctorForm}
-            >
-              Cancel
-            </button>
-          )}
-        </form>
+            <FormActions
+              saving={saving}
+              saveDisabled={saveDisabled}
+              onCancel={clearDoctorForm}
+              saveText={editingDoctor ? "Update Doctor" : "Save Doctor"}
+            />
+          </FormCard>
+        </Modal>
       )}
 
       <div className="table-card">
@@ -180,11 +229,10 @@ function DoctorsPage() {
 
           <tbody>
             {doctors.length === 0 ? (
-                <tr>
-                    <td colSpan={canManageDoctors ? 5 : 4} className="empty-state">
-                        No doctors found.
-                    </td>
-                </tr>
+              <EmptyState
+                message="No doctors found."
+                colSpan={canManageDoctors ? 5 : 4}
+              />
             ) : (
             doctors.map((doctor) => (
               <tr key={doctor.id}>
@@ -192,13 +240,7 @@ function DoctorsPage() {
                 <td>{doctor.specialty}</td>
                 <td>{doctor.cedula}</td>
                 <td>
-                  <span
-                    className={`entity-status ${
-                      doctor.isActive ? "entity-status-active" : "entity-status-inactive"
-                    }`}
-                  >
-                    {doctor.isActive ? "Active" : "Inactive"}
-                  </span>
+                  <StatusBadge active={doctor.isActive} />
                 </td>
                 {canManageDoctors && (
                   <td>

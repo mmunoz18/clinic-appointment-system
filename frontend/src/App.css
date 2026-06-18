@@ -236,6 +236,51 @@ td button.activate-button:hover {
   color: #111827;
 }
 
+.add-record-button {
+  margin-bottom: 24px;
+}
+
+.standard-form-card {
+  max-width: 760px;
+  margin-bottom: 24px;
+  padding: 24px;
+  background: white;
+  border-left: 4px solid #2563eb;
+  border-radius: 14px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+.standard-form-card h2 {
+  margin: 0 0 20px;
+  color: #111827;
+  font-size: 20px;
+}
+
+.standard-form-fields {
+  display: grid;
+  gap: 16px;
+}
+
+.standard-form-fields label {
+  display: grid;
+  gap: 7px;
+  color: #374151;
+  font-weight: 600;
+}
+
+.standard-form-fields input,
+.standard-form-fields select,
+.standard-form-fields textarea {
+  width: 100%;
+}
+
+.standard-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 4px;
+}
+
 .availability-card {
   max-width: 720px;
   padding: 24px;
@@ -740,6 +785,48 @@ button:active {
   margin: 0 0 12px;
   color: #111827;
   font-size: 24px;
+}
+
+.reusable-modal-card {
+  max-width: 560px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.modal-header h2 {
+  margin: 0;
+}
+
+.modal-close-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.modal-close-button:hover {
+  background: #e5e7eb;
+}
+
+.reusable-modal-card .standard-form-card {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
 }
 
 .modal-card p {
