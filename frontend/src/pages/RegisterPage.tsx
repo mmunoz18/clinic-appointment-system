@@ -23,9 +23,7 @@ function RegisterPage() {
       toast.success("User registered successfully");
       navigate("/login");
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Registration failed";
-
+      const message = error instanceof Error ? error.message : "Registration failed";
       toast.error(message);
     }
   }

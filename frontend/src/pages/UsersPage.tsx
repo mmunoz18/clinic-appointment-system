@@ -12,8 +12,7 @@ function UsersPage() {
       const data = await getUsers();
       setUsers(data);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Error loading users";
+      const message = error instanceof Error ? error.message : "Error loading users";
       toast.error(message);
     }
   }
@@ -28,8 +27,7 @@ function UsersPage() {
       toast.success("User role updated successfully");
       await loadUsers();
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Error updating user role";
+      const message = error instanceof Error ? error.message : "Error updating user role";
       toast.error(message);
     }
   }

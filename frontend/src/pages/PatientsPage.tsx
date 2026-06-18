@@ -13,6 +13,8 @@ function PatientsPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [cedula, setCedula] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
 
@@ -22,10 +24,14 @@ function PatientsPage() {
   const canDeletePatients = role === "Admin";
   const showPatientActions = canEditPatients || canDeletePatients;
 
-  function loadPatients() {
-    getPatients()
-      .then((data) => setPatients(data))
-      .catch((error) => console.error(error));
+  async function loadPatients() {
+    try {
+      const data = await getPatients();
+      setPatients(data);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error loading patients";
+      toast.error(message);
+    }
   }
 
   useEffect(() => {
@@ -41,22 +47,28 @@ function PatientsPage() {
             id: editingPatient.id,
             name,
             email,
+            cedula,
+            phoneNumber,
         });
         toast.success("Patient updated successfully");
         } else {
         await createPatient({
             name,
             email,
+            cedula,
+            phoneNumber,
         });
         toast.success("Patient created successfully");
         }
 
         setName("");
         setEmail("");
+        setCedula("");
+        setPhoneNumber("");
         setEditingPatient(null);
-        loadPatients();
+        await loadPatients();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Error updating patient";
+      const message = error instanceof Error ? error.message : "Error saving patient";
       toast.error(message);
     }
   }
@@ -65,6 +77,8 @@ function PatientsPage() {
     setEditingPatient(patient);
     setName(patient.name);
     setEmail(patient.email);
+    setCedula(patient.cedula);
+    setPhoneNumber(patient.phoneNumber);
   }
 
   async function confirmDeletePatient() {
@@ -76,7 +90,7 @@ function PatientsPage() {
       await deletePatient(patientToDelete.id);
       toast.success("Patient deleted successfully");
       setPatientToDelete(null);
-      loadPatients();
+      await loadPatients();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error deleting patient";
       toast.error(message);
@@ -110,6 +124,21 @@ function PatientsPage() {
               onChange={(event) => setEmail(event.target.value)}
               required
               />
+              
+              <input
+              type="text"
+              placeholder="Cedula"
+              value={cedula}
+              onChange={(event) => setCedula(event.target.value)}
+              required
+              />
+              
+              <input
+              type="text"
+              placeholder="Phone Number"
+              value={phoneNumber}
+              onChange={(event) => setPhoneNumber(event.target.value)}
+              />
 
               <button type="submit">{editingPatient ? "Update Patient" : "Add Patient"}</button>
               
@@ -120,6 +149,8 @@ function PatientsPage() {
                     setEditingPatient(null);
                     setName("");
                     setEmail("");
+                    setCedula("");
+                    setPhoneNumber("");
                   }}
                 >
                   Cancel
@@ -134,13 +165,15 @@ function PatientsPage() {
             <tr>
                 <th>Name</th>
                 <th>Email</th>
+                <th>Cedula</th>
+                <th>Phone Number</th>
                 {showPatientActions && <th>Actions</th>}
             </tr>
             </thead>
             <tbody>
             {patients.length === 0 ? (
                 <tr>
-                    <td colSpan={3} className="empty-state">
+                    <td colSpan={showPatientActions ? 5 : 4} className="empty-state">
                         No patients found.
                     </td>
                 </tr>
@@ -149,6 +182,8 @@ function PatientsPage() {
               <tr key={patient.id}>
                 <td>{patient.name}</td>
                 <td>{patient.email}</td>
+                <td>{patient.cedula}</td>
+                <td>{patient.phoneNumber}</td>
                 {showPatientActions && (
                 <td>
                   {canEditPatients && (

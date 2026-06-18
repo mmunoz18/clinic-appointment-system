@@ -81,9 +81,9 @@ using (var scope = app.Services.CreateScope())
     if (!context.Doctors.Any())
     {
         context.Doctors.AddRange(
-            new Doctor { Name = "Dr. Smith", Specialty = "Cardiology" },
-            new Doctor { Name = "Dr. Johnson", Specialty = "Pediatrics" },
-            new Doctor { Name = "Dr. Brown", Specialty = "Dermatology" }
+            new Doctor { Name = "Dr. Smith", Specialty = "Cardiology", Cedula = "123456780" },
+            new Doctor { Name = "Dr. Johnson", Specialty = "Pediatrics", Cedula = "123456781" },
+            new Doctor { Name = "Dr. Brown", Specialty = "Dermatology", Cedula = "123456782" }
         );
 
         context.SaveChanges();
@@ -94,27 +94,37 @@ using (var scope = app.Services.CreateScope())
             new Patient
             {
                 Name = "Maria Lopez",
-                Email = "maria.lopez@email.com"
+                Email = "maria.lopez@email.com",
+                PhoneNumber = "1234567890",
+                Cedula = "123456790"
             },
             new Patient
             {
                 Name = "Carlos Rodriguez",
-                Email = "carlos.rodriguez@email.com"
+                Email = "carlos.rodriguez@email.com",
+                PhoneNumber = "1234567891",
+                Cedula = "123456791"
             },
             new Patient
             {
                 Name = "Ana Martinez",
-                Email = "ana.martinez@email.com"
+                Email = "ana.martinez@email.com",
+                PhoneNumber = "1234567892",
+                Cedula = "123456792"
             },
             new Patient
             {
                 Name = "Jose Gonzalez",
-                Email = "jose.gonzalez@email.com"
+                Email = "jose.gonzalez@email.com",
+                PhoneNumber = "1234567893",
+                Cedula = "123456793"
             },
             new Patient
             {
                 Name = "Sofia Vargas",
-                Email = "sofia.vargas@email.com"
+                Email = "sofia.vargas@email.com",
+                PhoneNumber = "1234567894",
+                Cedula = "123456794"
             }
         );
 
@@ -124,6 +134,7 @@ using (var scope = app.Services.CreateScope())
     if (!context.Appointments.Any())
     {
         var tomorrow = DateTime.Today.AddDays(1);
+        var yesterday = DateTime.Today.AddDays(-1);
 
         context.Appointments.AddRange(
             new Appointment
@@ -160,9 +171,29 @@ using (var scope = app.Services.CreateScope())
                 PatientId = 5,
                 AppointmentDate = tomorrow.AddDays(1).AddHours(14),
                 Status = "Scheduled"
-            }
-        );
-
+            },
+            new Appointment
+            {
+            DoctorId = 1,
+            PatientId = 1,
+            AppointmentDate = yesterday.AddHours(9),
+            Status = "Scheduled"
+            },
+            new Appointment
+            {
+                DoctorId = 2,
+                PatientId = 2,
+                AppointmentDate = yesterday.AddHours(10),
+                Status = "Completed"
+            },
+            new Appointment
+            {
+                DoctorId = 3,
+                PatientId = 3,
+                AppointmentDate = yesterday.AddHours(11),
+                Status = "Cancelled"
+            });
+        
         context.SaveChanges();
     }
 }

@@ -32,15 +32,20 @@ function AppointmentsPage() {
   const canEditAppointments = role === "Admin" || role === "Receptionist" || role === "Doctor";
 
   async function loadData() {
-    const [appointmentsData, doctorsData, patientsData] = await Promise.all([
-      getAppointments(),
-      getDoctors(),
-      getPatients(),
-    ]);
+    try {
+      const [appointmentsData, doctorsData, patientsData] = await Promise.all([
+        getAppointments(),
+        getDoctors(),
+        getPatients(),
+      ]);
 
-    setAppointments(appointmentsData);
-    setDoctors(doctorsData);
-    setPatients(patientsData);
+      setAppointments(appointmentsData);
+      setDoctors(doctorsData);
+      setPatients(patientsData);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error loading appointments";
+      toast.error(message);
+    }
   }
 
   useEffect(() => {
@@ -79,7 +84,6 @@ function AppointmentsPage() {
       await loadData();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Something went wrong";
-
       toast.error(message);
     }
   }
@@ -103,8 +107,7 @@ function AppointmentsPage() {
         setAppointmentToDelete(null);
         await loadData();
     } catch (error) {
-        const message =
-        error instanceof Error ? error.message : "Error deleting appointment";
+        const message = error instanceof Error ? error.message : "Error deleting appointment";
         toast.error(message);
     }
 }
@@ -198,7 +201,7 @@ function AppointmentsPage() {
           </thead>
 
           <tbody>
-            {patients.length === 0 ? (
+            {appointments.length === 0 ? (
               <tr>
                 <td colSpan={5} className="empty-state">
                   No appointments found.

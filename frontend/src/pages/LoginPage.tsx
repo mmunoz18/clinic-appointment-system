@@ -29,8 +29,9 @@ function LoginPage() {
       toast.success("Login successful");
 
       navigate("/");
-    } catch {
-      toast.error("Invalid email or password");
+    } catch (error){
+      const message = error instanceof Error ? error.message : "Invalid email or password";
+      toast.error(message);
     }
   }
 

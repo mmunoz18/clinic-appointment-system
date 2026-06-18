@@ -37,18 +37,18 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var emailExists = await _context.Users.AnyAsync(u => u.Email == request.Email);
+            var validationError = await ValidateRegisterRequestAsync(request);
 
-            if (emailExists)
+            if (validationError != null)
             {
-                return BadRequest("Email is already registered.");
-            } 
+                return BadRequest(validationError);
+            }
 
             var user = new User
             {
-                Name = request.Name,
-                Email = request.Email,
-                //Role = "Admin"
+                Name = request.Name.Trim(),
+                Email = request.Email.Trim().ToLower(),
+                Role = "Admin"
             };
 
             var passwordHasher = new PasswordHasher<User>();
@@ -57,7 +57,7 @@ public class AuthController : ControllerBase
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            return Ok("User registered successfully.");
+            return NoContent();
         }
         catch (Exception ex)
         {
@@ -70,7 +70,15 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+            if (string.IsNullOrWhiteSpace(request.Email) ||
+                string.IsNullOrWhiteSpace(request.Password))
+            {
+                return Unauthorized("Invalid email or password.");
+            }
+
+            var normalizedEmail = request.Email.Trim().ToLower();
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail);
 
             if (user == null)
             {
@@ -129,5 +137,40 @@ public class AuthController : ControllerBase
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    private async Task<string?> ValidateRegisterRequestAsync(RegisterRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            return "Name is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            return "Email is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Password))
+        {
+            return "Password is required.";
+        }
+
+        if (request.Password.Length < 6)
+        {
+            return "Password must be at least 6 characters.";
+        }
+
+        var normalizedEmail = request.Email.Trim().ToLower();
+
+        var emailExists = await _context.Users.AnyAsync(u =>
+            u.Email.ToLower() == normalizedEmail);
+
+        if (emailExists)
+        {
+            return "Email is already registered.";
+        }
+
+        return null;
     }
 }

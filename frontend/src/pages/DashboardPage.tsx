@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getDoctors, getPatients, getAppointments, type Appointment } from "../api/clinicApi";
+import { toast } from "react-toastify";
 
 function DashboardPage() {
   const [doctorCount, setDoctorCount] = useState(0);
@@ -7,18 +8,18 @@ function DashboardPage() {
   const [appointmentCount, setAppointmentCount] = useState(0);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
 
-  const today = new Date();
+  const now = new Date();
 
   const todaysAppointments = appointments.filter((appointment) => {
     const appointmentDate = new Date(appointment.appointmentDate);
 
-    return appointmentDate.toDateString() === today.toDateString();
+    return appointmentDate.toDateString() === now.toDateString();
   });
 
   const upcomingAppointments = appointments.filter((appointment) => {
     const appointmentDate = new Date(appointment.appointmentDate);
 
-    return appointmentDate > today && appointment.status !== "Cancelled";
+    return appointmentDate > now && appointment.status !== "Cancelled";
   });
 
   const completedAppointments = appointments.filter(
@@ -32,7 +33,7 @@ function DashboardPage() {
   const nextAppointments = [...appointments]
   .filter(
     (appointment) =>
-      new Date(appointment.appointmentDate) > today &&
+      new Date(appointment.appointmentDate) > now &&
       appointment.status === "Scheduled"
   )
   .sort(
@@ -42,21 +43,27 @@ function DashboardPage() {
   )
   .slice(0, 5);
 
+  async function loadData() {
+    try {
+      const [doctorsData, patientsData, appointmentsData] = await Promise.all([
+        getDoctors(),
+        getPatients(),
+        getAppointments()
+      ]);
+    
+      setDoctorCount(doctorsData.length);
+      setPatientCount(patientsData.length);
+      setAppointments(appointmentsData);
+      setAppointmentCount(appointmentsData.length);
+    
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error loading data";
+      toast.error(message);
+    }
+  }
+
   useEffect(() => {
-    getDoctors()
-      .then((data) => setDoctorCount(data.length))
-      .catch((error) => console.error(error));
-    
-    getPatients()
-      .then((data) => setPatientCount(data.length))
-      .catch((error) => console.error(error));
-    
-    getAppointments()
-      .then((data) => {
-        setAppointments(data);
-        setAppointmentCount(data.length);
-      })
-      .catch((error) => console.error(error));
+    loadData();
   }, []);
 
   return (

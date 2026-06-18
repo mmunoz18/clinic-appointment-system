@@ -47,6 +47,16 @@ public class PatientsController : ControllerBase
     {
         try
         {
+            var validationError = await ValidatePatientAsync(patient);
+            if (validationError != null)
+            {
+                return BadRequest(validationError);
+            }
+            
+            patient.Name = patient.Name.Trim();
+            patient.Email = patient.Email.Trim().ToLower();
+            patient.Cedula = patient.Cedula.Trim();
+
             _context.Patients.Add(patient);
             await _context.SaveChangesAsync();
 
@@ -72,6 +82,12 @@ public class PatientsController : ControllerBase
             {
                 return BadRequest();
             }
+            
+            var validationError = await ValidatePatientAsync(patient, id);
+            if (validationError != null)
+            {
+                return BadRequest(validationError);
+            }
 
             var existingPatient = await _context.Patients.FindAsync(id);
 
@@ -80,8 +96,9 @@ public class PatientsController : ControllerBase
                 return NotFound();
             }
 
-            existingPatient.Name = patient.Name;
-            existingPatient.Email = patient.Email;
+            existingPatient.Name = patient.Name.Trim();
+            existingPatient.Email = patient.Email.Trim().ToLower();
+            existingPatient.Cedula = patient.Cedula.Trim();
 
             await _context.SaveChangesAsync();
 
@@ -103,7 +120,14 @@ public class PatientsController : ControllerBase
 
             if (patient == null)
             {
-                return NotFound();
+                return NotFound("Patient not found.");
+            }
+
+            var hasAppointments = await _context.Appointments.AnyAsync(a => a.PatientId == id);
+
+            if (hasAppointments)
+            {
+                return BadRequest("Cannot delete patient with scheduled appointments. Reassign or cancel appointments first.");
             }
 
             _context.Patients.Remove(patient);
@@ -115,5 +139,63 @@ public class PatientsController : ControllerBase
         {
             return StatusCode(500, "An unexpected error occurred.");
         }
+    }
+
+    private async Task<string?> ValidatePatientAsync(Patient patient, int? patientId = null)
+    {
+        if (string.IsNullOrWhiteSpace(patient.Name))
+        {
+            return "Patient name is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(patient.Email))
+        {
+            return "Patient email is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(patient.Cedula))
+        {
+            return "Patient cedula is required.";
+        }
+
+        if (patient.Cedula.Trim().Length != 9)
+        {
+            return "Patient cedula must be 9 characters long.";
+        }
+
+        var cedulaError = await ValidateCedulaIsUnique(patient.Cedula, patientId);
+        if (cedulaError != null)
+        {
+            return cedulaError;
+        }
+
+        var normalizedEmail = patient.Email.Trim().ToLower();
+
+        var emailExists = await _context.Patients.AnyAsync(p =>
+            p.Email.ToLower() == normalizedEmail &&
+            (!patientId.HasValue || p.Id != patientId.Value));
+
+        if (emailExists)
+        {
+            return "A patient with this email already exists.";
+        }
+
+        return null;
+    }
+
+    private async Task<string?> ValidateCedulaIsUnique(string cedula, int? patientId = null)
+    {
+        var normalizedCedula = cedula.Trim();
+
+        var cedulaExists = await _context.Patients.AnyAsync(p =>
+            p.Cedula == normalizedCedula &&
+            (!patientId.HasValue || p.Id != patientId.Value));
+
+        if (cedulaExists)
+        {
+            return "Cedula is already registered.";
+        }
+
+        return null;
     }
 }

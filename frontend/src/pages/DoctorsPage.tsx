@@ -13,6 +13,7 @@ function DoctorsPage() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [name, setName] = useState("");
   const [specialty, setSpecialty] = useState("");
+  const [cedula, setCedula] = useState("");
   const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
   const [doctorToDelete, setDoctorToDelete] = useState<Doctor | null>(null);
 
@@ -20,8 +21,13 @@ function DoctorsPage() {
   const canManageDoctors = role === "Admin";
 
   async function loadDoctors() {
-    const data = await getDoctors();
-    setDoctors(data);
+    try {
+      const data = await getDoctors();
+      setDoctors(data);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error loading doctors";
+      toast.error(message);
+    }
   }
 
   useEffect(() => {
@@ -37,22 +43,25 @@ function DoctorsPage() {
             id: editingDoctor.id,
             name,
             specialty,
+            cedula,
         });
         toast.success("Doctor updated successfully");
         } else {
         await createDoctor({
             name,
             specialty,
+            cedula,
         });
         toast.success("Doctor created successfully");
         }
 
         setName("");
         setSpecialty("");
+        setCedula("");
         setEditingDoctor(null);
         await loadDoctors();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Error updating doctor";
+      const message = error instanceof Error ? error.message : "Error saving doctor";
       toast.error(message);
     }
   }
@@ -61,6 +70,7 @@ function DoctorsPage() {
     setEditingDoctor(doctor);
     setName(doctor.name);
     setSpecialty(doctor.specialty);
+    setCedula(doctor.cedula);
   }
 
   async function confirmDeleteDoctor() {
@@ -74,10 +84,10 @@ function DoctorsPage() {
       setDoctorToDelete(null);
       await loadDoctors();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Error deleting doctor";
+      const message = error instanceof Error ? error.message : "Failed to delete doctor";
       toast.error(message);
     }
-}
+  }
 
   return (
     <section>
@@ -106,6 +116,14 @@ function DoctorsPage() {
             required
           />
 
+          <input
+            type="text"
+            placeholder="Cedula"
+            value={cedula}
+            onChange={(event) => setCedula(event.target.value)}
+            required
+          />
+
           <button type="submit">
             {editingDoctor ? "Update Doctor" : "Add Doctor"}
           </button>
@@ -117,6 +135,7 @@ function DoctorsPage() {
                 setEditingDoctor(null);
                 setName("");
                 setSpecialty("");
+                setCedula("");
               }}
             >
               Cancel
@@ -131,6 +150,7 @@ function DoctorsPage() {
             <tr>
               <th>Name</th>
               <th>Specialty</th>
+              <th>Cedula</th>
               {canManageDoctors && <th>Actions</th>}
             </tr>
           </thead>
@@ -138,7 +158,7 @@ function DoctorsPage() {
           <tbody>
             {doctors.length === 0 ? (
                 <tr>
-                    <td colSpan={3} className="empty-state">
+                    <td colSpan={canManageDoctors ? 4 : 3} className="empty-state">
                         No doctors found.
                     </td>
                 </tr>
@@ -147,6 +167,7 @@ function DoctorsPage() {
               <tr key={doctor.id}>
                 <td>{doctor.name}</td>
                 <td>{doctor.specialty}</td>
+                <td>{doctor.cedula}</td>
                 {canManageDoctors && (
                   <td>
                     <button onClick={() => handleEdit(doctor)}>Edit</button>

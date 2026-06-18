@@ -73,7 +73,7 @@ public class AppointmentsController : ControllerBase
     {
         try
         {
-        var validationError = await ValidateAppointmentAsync(appointment);
+        var validationError = await ValidateAppointmentAsync(appointment, validateFutureDate: true);
         if (validationError != null)
         {
             return BadRequest(validationError);
@@ -112,7 +112,19 @@ public class AppointmentsController : ControllerBase
                 return NotFound();
             }
 
-            var validationError = await ValidateAppointmentAsync(appointment, id);
+            var canEditError = ValidateAppointmentCanBeEdited(existingAppointment, appointment);
+            if (canEditError != null)
+            {
+                return BadRequest(canEditError);
+            }
+
+            var dateEditError = ValidateUpdatedAppointmentDate(appointment);
+            if (dateEditError != null)
+            {
+                return BadRequest(dateEditError);
+            }
+
+            var validationError = await ValidateAppointmentAsync(appointment, id, validateFutureDate: false);
             if (validationError != null)
             {
                 return BadRequest(validationError);
@@ -157,10 +169,19 @@ public class AppointmentsController : ControllerBase
         }
     }
 
-    private async Task<string?> ValidateAppointmentAsync(Appointment appointment, int? appointmentId = null)
+    private async Task<string?> ValidateAppointmentAsync(Appointment appointment, int? appointmentId = null, bool validateFutureDate = true)
     {
-        var dateError = ValidateAppointmentDate(appointment);
-        if (dateError != null) return dateError;
+        var requiredFieldsError = ValidateAppointmentDetails(appointment);
+        if (requiredFieldsError != null) return requiredFieldsError;
+
+        var statusError = ValidateAppointmentStatus(appointment);
+        if (statusError != null) return statusError;
+        
+        if (validateFutureDate)
+        {
+            var dateError = ValidateAppointmentDate(appointment);
+            if (dateError != null) return dateError;
+        }
 
         var doctorError = await ValidateDoctorExistsAsync(appointment.DoctorId);
         if (doctorError != null) return doctorError;
@@ -236,6 +257,70 @@ public class AppointmentsController : ControllerBase
         if (hasConflict)
         {
             return "Patient already has an appointment at this time.";
+        }
+
+        return null;
+    }
+
+    private string? ValidateAppointmentStatus(Appointment appointment)
+    {
+        var validStatuses = new[] { "Scheduled", "Completed", "Cancelled" };
+
+        if (!validStatuses.Contains(appointment.Status))
+        {
+            return "Invalid appointment status.";
+        }
+
+        return null;
+    }
+
+    private string? ValidateAppointmentDetails(Appointment appointment)
+    {
+        if (appointment.AppointmentDate == default)
+        {
+            return "Appointment date is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(appointment.Status))
+        {
+            return "Appointment status is required.";
+        }
+
+        if (appointment.DoctorId == 0)
+        {
+            return "Doctor is required.";
+        }
+
+        if (appointment.PatientId == 0)
+        {
+            return "Patient is required.";
+        }
+
+        return null;
+    }
+
+    private string? ValidateAppointmentCanBeEdited(Appointment existingAppointment, Appointment updatedAppointment)
+    {
+        if (existingAppointment.Status == "Completed" ||
+            existingAppointment.Status == "Cancelled")
+        {
+            return "Completed or cancelled appointments cannot be updated.";
+        }
+
+        if (existingAppointment.AppointmentDate < DateTime.Now &&
+            updatedAppointment.Status == "Scheduled")
+        {
+            return "Past appointments cannot remain scheduled. Mark them as completed or cancelled.";
+        }
+
+        return null;
+    }
+
+    private string? ValidateUpdatedAppointmentDate(Appointment appointment)
+    {
+        if (appointment.AppointmentDate <= DateTime.Now)
+        {
+            return "Appointment date must remain in the future when editing appointment details.";
         }
 
         return null;

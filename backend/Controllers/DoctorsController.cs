@@ -47,6 +47,16 @@ public class DoctorsController : ControllerBase
     {
         try
         {
+            var validationError = await ValidateDoctorAsync(doctor);
+            if (validationError != null)
+            {
+                return BadRequest(validationError);
+            }
+            
+            doctor.Name = doctor.Name.Trim();
+            doctor.Specialty = doctor.Specialty.Trim();
+            doctor.Cedula = doctor.Cedula.Trim();
+
             _context.Doctors.Add(doctor);
             await _context.SaveChangesAsync();
 
@@ -72,6 +82,12 @@ public class DoctorsController : ControllerBase
             {
                 return BadRequest();
             }
+            
+            var validationError = await ValidateDoctorAsync(doctor, id);
+            if (validationError != null)
+            {
+                return BadRequest(validationError);
+            }
 
             var existingDoctor = await _context.Doctors.FindAsync(id);
 
@@ -80,8 +96,9 @@ public class DoctorsController : ControllerBase
                 return NotFound();
             }
 
-            existingDoctor.Name = doctor.Name;
-            existingDoctor.Specialty = doctor.Specialty;
+            existingDoctor.Name = doctor.Name.Trim();
+            existingDoctor.Specialty = doctor.Specialty.Trim();
+            existingDoctor.Cedula = doctor.Cedula.Trim();
 
             await _context.SaveChangesAsync();
 
@@ -103,7 +120,14 @@ public class DoctorsController : ControllerBase
 
             if (doctor == null)
             {
-                return NotFound();
+                return NotFound("Doctor not found.");
+            }
+
+            var hasAppointments = await _context.Appointments.AnyAsync(a => a.DoctorId == id);
+
+            if (hasAppointments)
+            {
+                return BadRequest("Cannot delete doctor with scheduled appointments. Reassign or cancel appointments first.");
             }
 
             _context.Doctors.Remove(doctor);
@@ -115,5 +139,52 @@ public class DoctorsController : ControllerBase
         {
             return StatusCode(500, "An unexpected error occurred.");
         }
+    }
+
+    private async Task<string?> ValidateDoctorAsync(Doctor doctor, int? doctorId = null)
+    {
+        if (string.IsNullOrWhiteSpace(doctor.Name))
+        {
+            return "Doctor name is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(doctor.Specialty))
+        {
+            return "Doctor specialty is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(doctor.Cedula))
+        {
+            return "Doctor cedula is required.";
+        }
+        
+        if (doctor.Cedula.Trim().Length != 9)
+        {
+            return "Doctor cedula must be 9 characters long.";
+        }
+
+        var cedulaError = await ValidateCedulaIsUnique(doctor.Cedula, doctorId);
+        if (cedulaError != null)
+        {
+            return cedulaError;
+        }
+
+        return null;
+    }
+
+    private async Task<string?> ValidateCedulaIsUnique(string cedula, int? doctorId = null)
+    {
+        var normalizedCedula = cedula.Trim();
+
+        var cedulaExists = await _context.Doctors.AnyAsync(d =>
+            d.Cedula == normalizedCedula &&
+            (!doctorId.HasValue || d.Id != doctorId.Value));
+
+        if (cedulaExists)
+        {
+            return "Cedula is already registered.";
+        }
+
+        return null;
     }
 }

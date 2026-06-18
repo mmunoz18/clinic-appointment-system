@@ -1,24 +1,18 @@
 export const API_BASE_URL = "http://localhost:5121";
 
-function getAuthHeaders(): HeadersInit {
-  const token = localStorage.getItem("token");
-
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-}
-
 export type Doctor = {
   id: number;
   name: string;
   specialty: string;
+  cedula: string;
 }
 
 export type Patient = {
   id: number;
   name: string;
   email: string;
+  cedula: string;
+  phoneNumber: string;
 }
 
 export type Appointment = {
@@ -47,11 +41,14 @@ export type RegisterRequest = {
 export type CreateDoctorRequest = {
   name: string;
   specialty: string;
+  cedula: string;
 };
 
 export type CreatePatientRequest = {
   name: string;
   email: string;
+  cedula: string;
+  phoneNumber: string;
 };
 
 export type CreateAppointmentRequest = {
@@ -68,18 +65,21 @@ export type User = {
   role: string;
 };
 
+function getAuthHeaders(): HeadersInit {
+  const token = localStorage.getItem("token");
+
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
 export async function getDoctors() {
   const response = await fetch(`${API_BASE_URL}/api/doctors`, {
     headers: getAuthHeaders(),
   });
 
-  handleUnauthorized(response);
-  
-  if (!response.ok) {
-    throw new Error("Failed to fetch doctors");
-  }
-
-  return response.json();
+  return handleResponse(response, "Failed to fetch doctors");
 }
 
 export async function getPatients() {
@@ -87,13 +87,7 @@ export async function getPatients() {
     headers: getAuthHeaders(),
   });
 
-  handleUnauthorized(response);
-  
-  if (!response.ok) {
-    throw new Error("Failed to fetch patients");
-  }
-
-  return response.json();
+  return handleResponse(response, "Failed to fetch patients");
 }
 
 export async function getAppointments() {
@@ -101,13 +95,7 @@ export async function getAppointments() {
     headers: getAuthHeaders(),
   });
 
-  handleUnauthorized(response);
-  
-  if (!response.ok) {
-    throw new Error("Failed to fetch appointments");
-  }
-
-  return response.json();
+  return handleResponse(response, "Failed to fetch appointments");
 }
 
 export async function createDoctor(doctor: CreateDoctorRequest) {
@@ -117,13 +105,7 @@ export async function createDoctor(doctor: CreateDoctorRequest) {
     body: JSON.stringify(doctor),
   });
 
-  handleUnauthorized(response);
-  
-  if (!response.ok) {
-    throw new Error("Failed to create doctor");
-  }
-
-  return response.json();
+  return handleResponse(response, "Failed to create doctor");
 }
 
 export async function updateDoctor(doctor: Doctor) {
@@ -133,11 +115,7 @@ export async function updateDoctor(doctor: Doctor) {
     body: JSON.stringify(doctor),
   });
 
-  handleUnauthorized(response);
-  
-  if (!response.ok) {
-    throw new Error("Failed to update doctor");
-  }
+  return handleResponse(response, "Failed to update doctor");
 }
 
 export async function deleteDoctor(id: number) {
@@ -146,11 +124,7 @@ export async function deleteDoctor(id: number) {
     headers: getAuthHeaders(),
   });
 
-  handleUnauthorized(response);
-  
-  if (!response.ok) {
-    throw new Error("Failed to delete doctor");
-  }
+  return handleResponse(response, "Failed to delete doctor");
 }
 
 export async function createPatient(patient: CreatePatientRequest) {
@@ -160,13 +134,7 @@ export async function createPatient(patient: CreatePatientRequest) {
     body: JSON.stringify(patient),
   });
 
-  handleUnauthorized(response);
-  
-  if (!response.ok) {
-    throw new Error("Failed to create patient");
-  }
-
-  return response.json();
+  return handleResponse(response, "Failed to create patient");
 }
 
 export async function updatePatient(patient: Patient) {
@@ -176,11 +144,7 @@ export async function updatePatient(patient: Patient) {
     body: JSON.stringify(patient),
   });
 
-  handleUnauthorized(response);
-  
-  if (!response.ok) {
-    throw new Error("Failed to update patient");
-  }
+  return handleResponse(response, "Failed to update patient");
 }
 
 export async function deletePatient(id: number) {
@@ -189,11 +153,7 @@ export async function deletePatient(id: number) {
     headers: getAuthHeaders(),
   });
 
-  handleUnauthorized(response);
-  
-  if (!response.ok) {
-    throw new Error("Failed to delete patient");
-  }
+  return handleResponse(response, "Failed to delete patient");
 }
 
 export async function createAppointment(appointment: CreateAppointmentRequest) {
@@ -203,13 +163,7 @@ export async function createAppointment(appointment: CreateAppointmentRequest) {
     body: JSON.stringify(appointment),
   });
 
-  handleUnauthorized(response);
-  
-  if (!response.ok) {
-    throw new Error(await response.text());
-  }
-
-  return response.json();
+  return handleResponse(response, "Failed to create appointment");
 }
 
 export async function updateAppointment(appointment: Appointment) {
@@ -219,11 +173,7 @@ export async function updateAppointment(appointment: Appointment) {
     body: JSON.stringify(appointment),
   });
 
-  handleUnauthorized(response);
-  
-  if (!response.ok) {
-    throw new Error(await response.text());
-  }
+  return handleResponse(response, "Failed to update appointment");
 }
 
 export async function deleteAppointment(id: number) {
@@ -232,11 +182,7 @@ export async function deleteAppointment(id: number) {
     headers: getAuthHeaders(),
   });
 
-  handleUnauthorized(response);
-  
-  if (!response.ok) {
-    throw new Error("Failed to delete appointment");
-  }
+  return handleResponse(response, "Failed to delete appointment");
 }
 
 export async function login(email: string, password: string): Promise<AuthResponse> {
@@ -246,11 +192,7 @@ export async function login(email: string, password: string): Promise<AuthRespon
     body: JSON.stringify({ email, password }),
   });
 
-  if (!response.ok) {
-    throw new Error("Failed to login");
-  }
-
-  return response.json();
+  return handleResponse(response, "Failed to login");
 }
 
 export async function register(user: RegisterRequest): Promise<void> {
@@ -260,9 +202,7 @@ export async function register(user: RegisterRequest): Promise<void> {
     body: JSON.stringify(user),
   });
 
-  if (!response.ok) {
-    throw new Error(await response.text());
-  }
+  return handleResponse(response, "Failed to register");
 }
 
 export async function getUsers(): Promise<User[]> {
@@ -270,13 +210,7 @@ export async function getUsers(): Promise<User[]> {
     headers: getAuthHeaders(),
   });
 
-  handleUnauthorized(response);
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch users");
-  }
-
-  return response.json();
+  return handleResponse(response, "Failed to fetch users");
 }
 
 export async function updateUserRole(id: number, role: string): Promise<void> {
@@ -286,10 +220,31 @@ export async function updateUserRole(id: number, role: string): Promise<void> {
     body: JSON.stringify({ role }),
   });
 
+  return handleResponse(response, "Failed to update user role");
+}
+
+async function handleResponse(response: Response, fallbackMessage: string) {
   handleUnauthorized(response);
 
   if (!response.ok) {
-    throw new Error(await response.text());
+    const errorMessage = await response.text();
+    throw new Error(errorMessage || fallbackMessage);
+  }
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  const text = await response.text();
+
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
   }
 }
 
