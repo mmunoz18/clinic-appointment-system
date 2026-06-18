@@ -6,5 +6,6 @@ public class Doctor
     public string Name { get; set; } = "";
     public string Specialty { get; set; } = "";
     public string Cedula { get; set; } = "";
+    public bool IsActive { get; set; } = true;
     public User? User { get; set; }
 }

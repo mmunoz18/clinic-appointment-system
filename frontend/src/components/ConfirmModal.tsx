@@ -4,6 +4,7 @@ type ConfirmModalProps = {
   warning?: string;
   confirmText?: string;
   cancelText?: string;
+  reversible?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -14,6 +15,7 @@ function ConfirmModal({
   warning,
   confirmText = "Confirm",
   cancelText = "Cancel",
+  reversible = false,
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
@@ -27,7 +29,9 @@ function ConfirmModal({
         {warning && <p className="modal-warning">{warning}</p>}
 
         <p className="modal-danger-text">
-          This action cannot be undone.
+          {reversible
+            ? "You can activate this record again later."
+            : "This action cannot be undone."}
         </p>
 
         <div className="modal-actions">

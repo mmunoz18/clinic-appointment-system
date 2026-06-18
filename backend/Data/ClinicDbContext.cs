@@ -20,6 +20,14 @@ public class ClinicDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Doctor>()
+            .Property(doctor => doctor.IsActive)
+            .HasDefaultValue(true);
+
+        modelBuilder.Entity<Patient>()
+            .Property(patient => patient.IsActive)
+            .HasDefaultValue(true);
+
         modelBuilder.Entity<User>()
             .HasOne(user => user.Doctor)
             .WithOne(doctor => doctor.User)

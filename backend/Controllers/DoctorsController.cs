@@ -20,9 +20,17 @@ public class DoctorsController : ControllerBase
 
     [HttpGet]
     [Authorize(Policy = "AllRoles")]
-    public async Task<ActionResult<IEnumerable<Doctor>>> GetDoctors()
+    public async Task<ActionResult<IEnumerable<Doctor>>> GetDoctors(
+        [FromQuery] bool includeInactive = false)
     {
-        var doctors = await _context.Doctors.ToListAsync();
+        var query = _context.Doctors.AsNoTracking();
+
+        if (!includeInactive || !User.IsInRole("Admin"))
+        {
+            query = query.Where(doctor => doctor.IsActive);
+        }
+
+        var doctors = await query.ToListAsync();
 
         return Ok(doctors);
     }
@@ -34,6 +42,11 @@ public class DoctorsController : ControllerBase
         var doctor = await _context.Doctors.FindAsync(id);
 
         if (doctor == null)
+        {
+            return NotFound();
+        }
+
+        if (!doctor.IsActive && !User.IsInRole("Admin"))
         {
             return NotFound();
         }
@@ -56,6 +69,7 @@ public class DoctorsController : ControllerBase
             doctor.Name = doctor.Name.Trim();
             doctor.Specialty = doctor.Specialty.Trim();
             doctor.Cedula = doctor.Cedula.Trim();
+            doctor.IsActive = true;
 
             _context.Doctors.Add(doctor);
             await _context.SaveChangesAsync();
@@ -66,7 +80,7 @@ public class DoctorsController : ControllerBase
                 doctor
             );
         }
-        catch (Exception ex)
+        catch
         {
             return StatusCode(500, "An unexpected error occurred.");
         }
@@ -104,41 +118,54 @@ public class DoctorsController : ControllerBase
 
             return NoContent();
         }
-        catch (Exception ex)
+        catch
         {
             return StatusCode(500, "An unexpected error occurred.");
         }
     }
 
-    [HttpDelete("{id}")]
+    [HttpPut("{id}/deactivate")]
     [Authorize(Policy = "AdminOnly")]
-    public async Task<IActionResult> DeleteDoctor(int id)
+    public async Task<IActionResult> DeactivateDoctor(int id)
     {
-        try
+        var doctor = await _context.Doctors.FindAsync(id);
+
+        if (doctor == null)
         {
-            var doctor = await _context.Doctors.FindAsync(id);
-
-            if (doctor == null)
-            {
-                return NotFound("Doctor not found.");
-            }
-
-            var hasAppointments = await _context.Appointments.AnyAsync(a => a.DoctorId == id);
-
-            if (hasAppointments)
-            {
-                return BadRequest("Cannot delete doctor with scheduled appointments. Reassign or cancel appointments first.");
-            }
-
-            _context.Doctors.Remove(doctor);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            return NotFound("Doctor not found.");
         }
-        catch (Exception ex)
+
+        var hasFutureAppointments = await _context.Appointments.AnyAsync(a =>
+            a.DoctorId == id &&
+            a.AppointmentDate > DateTime.Now &&
+            a.Status == "Scheduled");
+
+        if (hasFutureAppointments)
         {
-            return StatusCode(500, "An unexpected error occurred.");
+            return BadRequest("Cannot deactivate doctor with scheduled future appointments.");
         }
+
+        doctor.IsActive = false;
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    [HttpPut("{id}/activate")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> ActivateDoctor(int id)
+    {
+        var doctor = await _context.Doctors.FindAsync(id);
+
+        if (doctor == null)
+        {
+            return NotFound("Doctor not found.");
+        }
+
+        doctor.IsActive = true;
+        await _context.SaveChangesAsync();
+
+        return NoContent();
     }
 
     private async Task<string?> ValidateDoctorAsync(Doctor doctor, int? doctorId = null)

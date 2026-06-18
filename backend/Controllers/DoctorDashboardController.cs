@@ -84,7 +84,8 @@ public class DoctorDashboardController : ControllerBase
                 patient.Name,
                 patient.Email,
                 patient.Cedula,
-                patient.PhoneNumber
+                patient.PhoneNumber,
+                patient.IsActive
             }
             into patientAppointments
             select new
@@ -94,6 +95,7 @@ public class DoctorDashboardController : ControllerBase
                 patientAppointments.Key.Email,
                 patientAppointments.Key.Cedula,
                 patientAppointments.Key.PhoneNumber,
+                patientAppointments.Key.IsActive,
                 AppointmentCount = patientAppointments.Count(),
                 LastAppointmentDate = patientAppointments.Max(a => a.AppointmentDate)
             };

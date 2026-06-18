@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   createDoctor,
-  deleteDoctor,
+  activateDoctor,
+  deactivateDoctor,
   getDoctors,
   updateDoctor,
   type Doctor,
@@ -15,20 +16,20 @@ function DoctorsPage() {
   const [specialty, setSpecialty] = useState("");
   const [cedula, setCedula] = useState("");
   const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
-  const [doctorToDelete, setDoctorToDelete] = useState<Doctor | null>(null);
+  const [doctorToDeactivate, setDoctorToDeactivate] = useState<Doctor | null>(null);
 
   const role = localStorage.getItem("role");
   const canManageDoctors = role === "Admin";
 
-  async function loadDoctors() {
+  const loadDoctors = useCallback(async () => {
     try {
-      const data = await getDoctors();
+      const data = await getDoctors(canManageDoctors);
       setDoctors(data);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error loading doctors";
       toast.error(message);
     }
-  }
+  }, [canManageDoctors]);
 
   useEffect(() => {
     async function loadDoctorsPage() {
@@ -36,7 +37,7 @@ function DoctorsPage() {
     }
 
     loadDoctorsPage();
-  }, []);
+  }, [loadDoctors]);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -48,6 +49,7 @@ function DoctorsPage() {
             name,
             specialty,
             cedula,
+            isActive: editingDoctor.isActive,
         });
         toast.success("Doctor updated successfully");
         } else {
@@ -77,18 +79,38 @@ function DoctorsPage() {
     setCedula(doctor.cedula);
   }
 
-  async function confirmDeleteDoctor() {
-    if (!doctorToDelete) {
+  function clearDoctorForm() {
+    setEditingDoctor(null);
+    setName("");
+    setSpecialty("");
+    setCedula("");
+  }
+
+  async function confirmDeactivateDoctor() {
+    if (!doctorToDeactivate) {
       return;
     }
 
     try {
-      await deleteDoctor(doctorToDelete.id);
-      toast.success("Doctor deleted successfully");
-      setDoctorToDelete(null);
+      await deactivateDoctor(doctorToDeactivate.id);
+      toast.success("Doctor deactivated successfully");
+      setDoctorToDeactivate(null);
+      clearDoctorForm();
       await loadDoctors();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to delete doctor";
+      const message = error instanceof Error ? error.message : "Failed to deactivate doctor";
+      toast.error(message);
+    }
+  }
+
+  async function handleActivateDoctor(doctor: Doctor) {
+    try {
+      await activateDoctor(doctor.id);
+      toast.success("Doctor activated successfully");
+      clearDoctorForm();
+      await loadDoctors();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to activate doctor";
       toast.error(message);
     }
   }
@@ -135,12 +157,8 @@ function DoctorsPage() {
           {editingDoctor && (
             <button
               type="button"
-              onClick={() => {
-                setEditingDoctor(null);
-                setName("");
-                setSpecialty("");
-                setCedula("");
-              }}
+              className="secondary-button"
+              onClick={clearDoctorForm}
             >
               Cancel
             </button>
@@ -155,6 +173,7 @@ function DoctorsPage() {
               <th>Name</th>
               <th>Specialty</th>
               <th>Cedula</th>
+              <th>Status</th>
               {canManageDoctors && <th>Actions</th>}
             </tr>
           </thead>
@@ -162,7 +181,7 @@ function DoctorsPage() {
           <tbody>
             {doctors.length === 0 ? (
                 <tr>
-                    <td colSpan={canManageDoctors ? 4 : 3} className="empty-state">
+                    <td colSpan={canManageDoctors ? 5 : 4} className="empty-state">
                         No doctors found.
                     </td>
                 </tr>
@@ -172,12 +191,35 @@ function DoctorsPage() {
                 <td>{doctor.name}</td>
                 <td>{doctor.specialty}</td>
                 <td>{doctor.cedula}</td>
+                <td>
+                  <span
+                    className={`entity-status ${
+                      doctor.isActive ? "entity-status-active" : "entity-status-inactive"
+                    }`}
+                  >
+                    {doctor.isActive ? "Active" : "Inactive"}
+                  </span>
+                </td>
                 {canManageDoctors && (
                   <td>
-                    <button onClick={() => handleEdit(doctor)}>Edit</button>
-                    <button onClick={() => setDoctorToDelete(doctor)}>
-                      Delete
+                    <button
+                      disabled={!doctor.isActive}
+                      onClick={() => handleEdit(doctor)}
+                    >
+                      Edit
                     </button>
+                    {doctor.isActive ? (
+                      <button onClick={() => setDoctorToDeactivate(doctor)}>
+                        Deactivate
+                      </button>
+                    ) : (
+                      <button
+                        className="activate-button"
+                        onClick={() => handleActivateDoctor(doctor)}
+                      >
+                        Activate
+                      </button>
+                    )}
                   </td>
                 )}
               </tr>
@@ -186,19 +228,20 @@ function DoctorsPage() {
         </table>
       </div>
       
-      {doctorToDelete && (
+      {doctorToDeactivate && (
         <ConfirmModal
-          title="Delete doctor?"
+          title="Deactivate doctor?"
           message={
             <>
-              Are you sure you want to delete{" "}
-              <strong>{doctorToDelete.name}</strong>?
+              Are you sure you want to deactivate{" "}
+              <strong>{doctorToDeactivate.name}</strong>?
             </>
           }
-          warning="If this doctor has appointments, deletion may fail. Reassign or cancel appointments first."
-          confirmText="Delete"
-          onCancel={() => setDoctorToDelete(null)}
-          onConfirm={confirmDeleteDoctor}
+          warning="Inactive doctors cannot be assigned to new appointments."
+          confirmText="Deactivate"
+          reversible
+          onCancel={() => setDoctorToDeactivate(null)}
+          onConfirm={confirmDeactivateDoctor}
         />
       )}
     </section>

@@ -60,10 +60,11 @@ public class UsersController : ControllerBase
                 return BadRequest("A doctor profile must be assigned to users with the Doctor role.");
             }
 
-            var doctorExists = await _context.Doctors.AnyAsync(d => d.Id == request.DoctorId.Value);
+            var doctorExists = await _context.Doctors.AnyAsync(d =>
+                d.Id == request.DoctorId.Value && d.IsActive);
             if (!doctorExists)
             {
-                return BadRequest("The selected doctor does not exist.");
+                return BadRequest("The selected doctor does not exist or is inactive.");
             }
 
             var doctorAlreadyAssigned = await _context.Users.AnyAsync(u =>

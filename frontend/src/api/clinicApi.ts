@@ -5,6 +5,7 @@ export type Doctor = {
   name: string;
   specialty: string;
   cedula: string;
+  isActive: boolean;
 }
 
 export type Patient = {
@@ -13,6 +14,7 @@ export type Patient = {
   email: string;
   cedula: string;
   phoneNumber: string;
+  isActive: boolean;
 }
 
 export type Appointment = {
@@ -93,18 +95,24 @@ function getAuthHeaders(): HeadersInit {
   };
 }
 
-export async function getDoctors() {
-  const response = await fetch(`${API_BASE_URL}/api/doctors`, {
+export async function getDoctors(includeInactive = false) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/doctors?includeInactive=${includeInactive}`,
+    {
     headers: getAuthHeaders(),
-  });
+    }
+  );
 
   return handleResponse(response, "Failed to fetch doctors");
 }
 
-export async function getPatients() {
-  const response = await fetch(`${API_BASE_URL}/api/patients`, {
+export async function getPatients(includeInactive = false) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/patients?includeInactive=${includeInactive}`,
+    {
     headers: getAuthHeaders(),
-  });
+    }
+  );
 
   return handleResponse(response, "Failed to fetch patients");
 }
@@ -137,13 +145,22 @@ export async function updateDoctor(doctor: Doctor) {
   return handleResponse(response, "Failed to update doctor");
 }
 
-export async function deleteDoctor(id: number) {
-  const response = await fetch(`${API_BASE_URL}/api/doctors/${id}`, {
-    method: "DELETE",
+export async function deactivateDoctor(id: number) {
+  const response = await fetch(`${API_BASE_URL}/api/doctors/${id}/deactivate`, {
+    method: "PUT",
     headers: getAuthHeaders(),
   });
 
-  return handleResponse(response, "Failed to delete doctor");
+  return handleResponse(response, "Failed to deactivate doctor");
+}
+
+export async function activateDoctor(id: number) {
+  const response = await fetch(`${API_BASE_URL}/api/doctors/${id}/activate`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse(response, "Failed to activate doctor");
 }
 
 export async function createPatient(patient: CreatePatientRequest) {
@@ -166,13 +183,22 @@ export async function updatePatient(patient: Patient) {
   return handleResponse(response, "Failed to update patient");
 }
 
-export async function deletePatient(id: number) {
-  const response = await fetch(`${API_BASE_URL}/api/patients/${id}`, {
-    method: "DELETE",
+export async function deactivatePatient(id: number) {
+  const response = await fetch(`${API_BASE_URL}/api/patients/${id}/deactivate`, {
+    method: "PUT",
     headers: getAuthHeaders(),
   });
 
-  return handleResponse(response, "Failed to delete patient");
+  return handleResponse(response, "Failed to deactivate patient");
+}
+
+export async function activatePatient(id: number) {
+  const response = await fetch(`${API_BASE_URL}/api/patients/${id}/activate`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse(response, "Failed to activate patient");
 }
 
 export async function createAppointment(appointment: CreateAppointmentRequest) {

@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { 
     createPatient,
-    deletePatient,
+    activatePatient,
+    deactivatePatient,
     getPatients,
     updatePatient,
     type Patient,
@@ -16,7 +17,7 @@ function PatientsPage() {
   const [cedula, setCedula] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
-  const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
+  const [patientToDeactivate, setPatientToDeactivate] = useState<Patient | null>(null);
 
   const role = localStorage.getItem("role");
   const canManagePatients = role === "Admin" || role === "Receptionist";
@@ -24,15 +25,15 @@ function PatientsPage() {
   const canDeletePatients = role === "Admin";
   const showPatientActions = canEditPatients || canDeletePatients;
 
-  async function loadPatients() {
+  const loadPatients = useCallback(async () => {
     try {
-      const data = await getPatients();
+      const data = await getPatients(role === "Admin");
       setPatients(data);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error loading patients";
       toast.error(message);
     }
-  }
+  }, [role]);
 
   useEffect(() => {
     async function loadPatientsPage() {
@@ -40,7 +41,7 @@ function PatientsPage() {
     }
 
     loadPatientsPage();
-  }, []);
+  }, [loadPatients]);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -53,6 +54,7 @@ function PatientsPage() {
             email,
             cedula,
             phoneNumber,
+            isActive: editingPatient.isActive,
         });
         toast.success("Patient updated successfully");
         } else {
@@ -85,18 +87,29 @@ function PatientsPage() {
     setPhoneNumber(patient.phoneNumber);
   }
 
-  async function confirmDeletePatient() {
-    if (!patientToDelete) {
+  async function confirmDeactivatePatient() {
+    if (!patientToDeactivate) {
       return;
     }
 
     try {
-      await deletePatient(patientToDelete.id);
-      toast.success("Patient deleted successfully");
-      setPatientToDelete(null);
+      await deactivatePatient(patientToDeactivate.id);
+      toast.success("Patient deactivated successfully");
+      setPatientToDeactivate(null);
       await loadPatients();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Error deleting patient";
+      const message = error instanceof Error ? error.message : "Error deactivating patient";
+      toast.error(message);
+    }
+  }
+
+  async function handleActivatePatient(patient: Patient) {
+    try {
+      await activatePatient(patient.id);
+      toast.success("Patient activated successfully");
+      await loadPatients();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error activating patient";
       toast.error(message);
     }
   }
@@ -171,13 +184,14 @@ function PatientsPage() {
                 <th>Email</th>
                 <th>Cedula</th>
                 <th>Phone Number</th>
+                <th>Status</th>
                 {showPatientActions && <th>Actions</th>}
             </tr>
             </thead>
             <tbody>
             {patients.length === 0 ? (
                 <tr>
-                    <td colSpan={showPatientActions ? 5 : 4} className="empty-state">
+                    <td colSpan={showPatientActions ? 6 : 5} className="empty-state">
                         No patients found.
                     </td>
                 </tr>
@@ -188,15 +202,33 @@ function PatientsPage() {
                 <td>{patient.email}</td>
                 <td>{patient.cedula}</td>
                 <td>{patient.phoneNumber}</td>
+                <td>
+                  <span
+                    className={`entity-status ${
+                      patient.isActive ? "entity-status-active" : "entity-status-inactive"
+                    }`}
+                  >
+                    {patient.isActive ? "Active" : "Inactive"}
+                  </span>
+                </td>
                 {showPatientActions && (
                 <td>
                   {canEditPatients && (
                     <button onClick={() => handleEditPatient(patient)}>Edit</button>
                   )}
                   {canDeletePatients && (
-                    <button onClick={() => setPatientToDelete(patient)}>
-                      Delete
-                    </button>
+                    patient.isActive ? (
+                      <button onClick={() => setPatientToDeactivate(patient)}>
+                        Deactivate
+                      </button>
+                    ) : (
+                      <button
+                        className="activate-button"
+                        onClick={() => handleActivatePatient(patient)}
+                      >
+                        Activate
+                      </button>
+                    )
                   )}
                 </td>
                 )}
@@ -206,19 +238,20 @@ function PatientsPage() {
         </table>
         </div>
         
-        {patientToDelete && (
+        {patientToDeactivate && (
           <ConfirmModal
-            title="Delete patient?"
+            title="Deactivate patient?"
             message={
               <>
-                Are you sure you want to delete{" "}
-                <strong>{patientToDelete.name}</strong>?
+                Are you sure you want to deactivate{" "}
+                <strong>{patientToDeactivate.name}</strong>?
               </>
             }
-            warning="If this patient has appointments, their appointment history may be affected."
-            confirmText="Delete"
-            onCancel={() => setPatientToDelete(null)}
-            onConfirm={confirmDeletePatient}
+            warning="Inactive patients cannot be assigned to new appointments."
+            confirmText="Deactivate"
+            reversible
+            onCancel={() => setPatientToDeactivate(null)}
+            onConfirm={confirmDeactivatePatient}
           />
         )}
     </section>

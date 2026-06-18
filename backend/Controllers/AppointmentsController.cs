@@ -123,7 +123,7 @@ public class AppointmentsController : ControllerBase
             appointment
         );
         }
-        catch (Exception ex)
+        catch
         {
             return StatusCode(500, "An unexpected error occurred.");
         }
@@ -190,7 +190,7 @@ public class AppointmentsController : ControllerBase
 
             return NoContent();
         }
-        catch (Exception ex)
+        catch
         {
             return StatusCode(500, "An unexpected error occurred.");
         }
@@ -214,7 +214,7 @@ public class AppointmentsController : ControllerBase
 
             return NoContent();
         }
-        catch (Exception ex)
+        catch
         {
             return StatusCode(500, "An unexpected error occurred.");
         }
@@ -261,11 +261,12 @@ public class AppointmentsController : ControllerBase
 
     private async Task<string?> ValidateDoctorExistsAsync(int doctorId)
     {
-        var doctorExists = await _context.Doctors.AnyAsync(d => d.Id == doctorId);
+        var doctorExists = await _context.Doctors.AnyAsync(d =>
+            d.Id == doctorId && d.IsActive);
 
         if (!doctorExists)
         {
-            return "Doctor does not exist.";
+            return "Doctor does not exist or is inactive.";
         }
 
         return null;
@@ -273,11 +274,12 @@ public class AppointmentsController : ControllerBase
 
     private async Task<string?> ValidatePatientExistsAsync(int patientId)
     {
-        var patientExists = await _context.Patients.AnyAsync(p => p.Id == patientId);
+        var patientExists = await _context.Patients.AnyAsync(p =>
+            p.Id == patientId && p.IsActive);
 
         if (!patientExists)
         {
-            return "Patient does not exist.";
+            return "Patient does not exist or is inactive.";
         }
 
         return null;
