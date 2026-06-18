@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
+import { Link } from "react-router-dom";
 import {
   getDoctorPatients,
   type DoctorPatient,
@@ -38,12 +39,13 @@ function DoctorPatientsPage() {
               <th>Phone Number</th>
               <th>Appointments</th>
               <th>Latest Appointment</th>
+              <th>Details</th>
             </tr>
           </thead>
           <tbody>
             {patients.length === 0 ? (
               <tr>
-                <td colSpan={5} className="empty-state">
+                <td colSpan={6} className="empty-state">
                   No patients to show.
                 </td>
               </tr>
@@ -59,6 +61,14 @@ function DoctorPatientsPage() {
                       dateStyle: "medium",
                       timeStyle: "short",
                     })}
+                  </td>
+                  <td>
+                    <Link
+                      className="table-link-button"
+                      to={`/patients/${patient.id}`}
+                    >
+                      View Notes
+                    </Link>
                   </td>
                 </tr>
               ))

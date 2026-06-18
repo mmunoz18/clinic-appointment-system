@@ -9,6 +9,7 @@ import {
 } from "../api/clinicApi";
 import { toast } from "react-toastify";
 import ConfirmModal from "../components/ConfirmModal";
+import { Link } from "react-router-dom";
 
 function PatientsPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -23,6 +24,7 @@ function PatientsPage() {
   const canManagePatients = role === "Admin" || role === "Receptionist";
   const canEditPatients = role === "Admin" || role === "Receptionist";
   const canDeletePatients = role === "Admin";
+  const canViewNotes = role === "Admin";
   const showPatientActions = canEditPatients || canDeletePatients;
 
   const loadPatients = useCallback(async () => {
@@ -185,13 +187,19 @@ function PatientsPage() {
                 <th>Cedula</th>
                 <th>Phone Number</th>
                 <th>Status</th>
+                {canViewNotes && <th>Medical Notes</th>}
                 {showPatientActions && <th>Actions</th>}
             </tr>
             </thead>
             <tbody>
             {patients.length === 0 ? (
                 <tr>
-                    <td colSpan={showPatientActions ? 6 : 5} className="empty-state">
+                    <td
+                      colSpan={
+                        5 + (canViewNotes ? 1 : 0) + (showPatientActions ? 1 : 0)
+                      }
+                      className="empty-state"
+                    >
                         No patients found.
                     </td>
                 </tr>
@@ -211,6 +219,16 @@ function PatientsPage() {
                     {patient.isActive ? "Active" : "Inactive"}
                   </span>
                 </td>
+                {canViewNotes && (
+                  <td>
+                    <Link
+                      className="table-link-button"
+                      to={`/patients/${patient.id}`}
+                    >
+                      View Notes
+                    </Link>
+                  </td>
+                )}
                 {showPatientActions && (
                 <td>
                   {canEditPatients && (

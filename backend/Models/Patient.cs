@@ -8,4 +8,5 @@ public class Patient
     public string Cedula { get; set; } = "";
     public string? PhoneNumber { get; set; }
     public bool IsActive { get; set; } = true;
+    public ICollection<PatientNote> Notes { get; set; } = [];
 }

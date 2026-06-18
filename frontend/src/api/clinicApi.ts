@@ -101,6 +101,17 @@ export type DoctorAvailabilityRequest = {
   endTime: string;
 };
 
+export type PatientNote = {
+  id: number;
+  patientId: number;
+  doctorId: number;
+  doctorName: string;
+  note: string;
+  createdAt: string;
+  updatedAt: string;
+  canEdit: boolean;
+};
+
 function getAuthHeaders(): HeadersInit {
   const token = localStorage.getItem("token");
 
@@ -130,6 +141,14 @@ export async function getPatients(includeInactive = false) {
   );
 
   return handleResponse(response, "Failed to fetch patients");
+}
+
+export async function getPatient(id: number): Promise<Patient> {
+  const response = await fetch(`${API_BASE_URL}/api/patients/${id}`, {
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse(response, "Failed to fetch patient");
 }
 
 export async function getAppointments() {
@@ -358,6 +377,40 @@ export async function deactivateDoctorAvailability(id: number): Promise<void> {
   });
 
   return handleResponse(response, "Failed to deactivate doctor availability");
+}
+
+export async function getPatientNotes(patientId: number): Promise<PatientNote[]> {
+  const response = await fetch(`${API_BASE_URL}/api/patients/${patientId}/notes`, {
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse(response, "Failed to fetch patient notes");
+}
+
+export async function createPatientNote(
+  patientId: number,
+  note: string
+): Promise<PatientNote> {
+  const response = await fetch(`${API_BASE_URL}/api/patients/${patientId}/notes`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ note }),
+  });
+
+  return handleResponse(response, "Failed to create patient note");
+}
+
+export async function updatePatientNote(
+  id: number,
+  note: string
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/patient-notes/${id}`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ note }),
+  });
+
+  return handleResponse(response, "Failed to update patient note");
 }
 
 async function handleResponse(response: Response, fallbackMessage: string) {

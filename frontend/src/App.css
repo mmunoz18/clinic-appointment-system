@@ -418,6 +418,138 @@ button:active {
   color: #6b7280;
 }
 
+.table-link-button {
+  display: inline-block;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: #2563eb;
+  color: white;
+  font-weight: 600;
+}
+
+.table-link-button:hover {
+  background: #1d4ed8;
+}
+
+.back-button {
+  margin-bottom: 20px;
+}
+
+.patient-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.patient-summary > div {
+  display: grid;
+  gap: 6px;
+  padding: 18px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+.patient-summary span {
+  color: #6b7280;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.notes-section {
+  max-width: 900px;
+}
+
+.notes-header h2 {
+  margin: 0;
+}
+
+.notes-header p {
+  margin: 6px 0 18px;
+  color: #6b7280;
+}
+
+.note-form {
+  display: grid;
+  gap: 10px;
+  padding: 20px;
+  margin-bottom: 22px;
+  background: white;
+  border-radius: 14px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+.note-form label {
+  font-weight: 700;
+}
+
+.note-form textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  color: #111827;
+  background: white;
+  resize: vertical;
+}
+
+.note-form textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.note-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
+
+.note-form-actions span {
+  margin-right: auto;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.notes-list {
+  display: grid;
+  gap: 14px;
+}
+
+.note-card {
+  padding: 20px;
+  background: white;
+  border-left: 4px solid #2563eb;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+.note-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.note-card-header > div {
+  display: grid;
+  gap: 4px;
+}
+
+.note-card time,
+.note-card small {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.note-card p {
+  margin: 16px 0 8px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
 @media (max-width: 1100px) {
   .card-grid,
   .doctor-card-grid {
@@ -445,6 +577,10 @@ button:active {
 
   .card-grid,
   .doctor-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .patient-summary {
     grid-template-columns: 1fr;
   }
 

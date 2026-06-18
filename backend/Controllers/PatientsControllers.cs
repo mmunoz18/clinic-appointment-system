@@ -3,6 +3,7 @@ using backend.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace backend.Controllers;
 
@@ -36,14 +37,30 @@ public class PatientsController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    [Authorize(Policy = "AdminOrReceptionist")]
+    [Authorize(Policy = "AllRoles")]
     public async Task<ActionResult<Patient>> GetPatient(int id)
     {
-        var patient = await _context.Patients.FindAsync(id);
+        var patient = await _context.Patients
+            .AsNoTracking()
+            .FirstOrDefaultAsync(patient => patient.Id == id);
 
         if (patient == null)
         {
             return NotFound();
+        }
+
+        if (User.IsInRole("Doctor"))
+        {
+            var doctorId = await GetLoggedInDoctorIdAsync();
+            var isOwnPatient = doctorId.HasValue &&
+                await _context.Appointments.AsNoTracking().AnyAsync(appointment =>
+                    appointment.DoctorId == doctorId.Value &&
+                    appointment.PatientId == id);
+
+            if (!isOwnPatient)
+            {
+                return NotFound();
+            }
         }
 
         return Ok(patient);
@@ -209,5 +226,21 @@ public class PatientsController : ControllerBase
         }
 
         return null;
+    }
+
+    private async Task<int?> GetLoggedInDoctorIdAsync()
+    {
+        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (!int.TryParse(userIdValue, out var userId))
+        {
+            return null;
+        }
+
+        return await _context.Users
+            .AsNoTracking()
+            .Where(user => user.Id == userId)
+            .Select(user => user.DoctorId)
+            .SingleOrDefaultAsync();
     }
 }

@@ -9,4 +9,5 @@ public class Doctor
     public bool IsActive { get; set; } = true;
     public User? User { get; set; }
     public ICollection<DoctorAvailability> Availabilities { get; set; } = [];
+    public ICollection<PatientNote> PatientNotes { get; set; } = [];
 }

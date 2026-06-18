@@ -134,6 +134,38 @@ namespace backend.Migrations
                     b.ToTable("Patients");
                 });
 
+            modelBuilder.Entity("backend.Models.PatientNote", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DoctorId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PatientId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DoctorId");
+
+                    b.HasIndex("PatientId", "CreatedAt");
+
+                    b.ToTable("PatientNotes");
+                });
+
             modelBuilder.Entity("backend.Models.User", b =>
                 {
                     b.Property<int>("Id")
@@ -207,11 +239,37 @@ namespace backend.Migrations
                     b.Navigation("Doctor");
                 });
 
+            modelBuilder.Entity("backend.Models.PatientNote", b =>
+                {
+                    b.HasOne("backend.Models.Doctor", "Doctor")
+                        .WithMany("PatientNotes")
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("backend.Models.Patient", "Patient")
+                        .WithMany("Notes")
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Doctor");
+
+                    b.Navigation("Patient");
+                });
+
             modelBuilder.Entity("backend.Models.Doctor", b =>
                 {
                     b.Navigation("Availabilities");
 
+                    b.Navigation("PatientNotes");
+
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("backend.Models.Patient", b =>
+                {
+                    b.Navigation("Notes");
                 });
 #pragma warning restore 612, 618
         }

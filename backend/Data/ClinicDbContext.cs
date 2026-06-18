@@ -18,6 +18,8 @@ public class ClinicDbContext : DbContext
 
     public DbSet<DoctorAvailability> DoctorAvailabilities { get; set; }
 
+    public DbSet<PatientNote> PatientNotes { get; set; }
+
     public DbSet<User> Users => Set<User>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -46,6 +48,25 @@ public class ClinicDbContext : DbContext
                 availability.DoctorId,
                 availability.DayOfWeek
             });
+
+        modelBuilder.Entity<PatientNote>()
+            .HasOne(note => note.Patient)
+            .WithMany(patient => patient.Notes)
+            .HasForeignKey(note => note.PatientId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<PatientNote>()
+            .HasOne(note => note.Doctor)
+            .WithMany(doctor => doctor.PatientNotes)
+            .HasForeignKey(note => note.DoctorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<PatientNote>()
+            .Property(note => note.Note)
+            .HasMaxLength(4000);
+
+        modelBuilder.Entity<PatientNote>()
+            .HasIndex(note => new { note.PatientId, note.CreatedAt });
 
         modelBuilder.Entity<User>()
             .HasOne(user => user.Doctor)

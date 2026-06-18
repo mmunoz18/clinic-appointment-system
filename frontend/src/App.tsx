@@ -11,6 +11,7 @@ import UsersPage from "./pages/UsersPage";
 import DoctorPatientsPage from "./pages/DoctorPatientsPage";
 import DoctorAppointmentsPage from "./pages/DoctorAppointmentsPage";
 import DoctorAvailabilityPage from "./pages/DoctorAvailabilityPage";
+import PatientDetailsPage from "./pages/PatientDetailsPage";
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
           <Route path="my-patients" element={<DoctorPatientsPage />} />
           <Route path="my-appointments" element={<DoctorAppointmentsPage />} />
           <Route path="doctor-availability" element={<DoctorAvailabilityPage />} />
+          <Route path="patients/:id" element={<PatientDetailsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
