@@ -25,7 +25,7 @@ function Modal({ titleId, title, children, onClose }: ModalProps) {
             ×
           </button>
         </div>
-        {children}
+        <div className="modal-content">{children}</div>
       </div>
     </div>
   );

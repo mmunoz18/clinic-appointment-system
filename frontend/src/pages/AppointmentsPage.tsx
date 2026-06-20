@@ -14,11 +14,18 @@ import {
 } from "../api/clinicApi";
 import { toast } from "react-toastify";
 import ConfirmModal from "../components/ConfirmModal";
+import EmptyState from "../components/EmptyState";
+import FormActions from "../components/FormActions";
+import FormCard from "../components/FormCard";
+import Modal from "../components/Modal";
+import AppointmentStatusBadge from "../components/AppointmentStatusBadge";
+import StatusBadge from "../components/StatusBadge";
 
 function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(true);
   const [doctorAvailability, setDoctorAvailability] = useState<
     DoctorAvailability[]
   >([]);
@@ -30,14 +37,45 @@ function AppointmentsPage() {
   const [status, setStatus] = useState("Scheduled");
   const [editingAppointment, setEditingAppointment] =
     useState<Appointment | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [appointmentToDelete, setAppointmentToDelete] = useState<Appointment | null>(null);
+  const [appointmentToComplete, setAppointmentToComplete] =
+    useState<Appointment | null>(null);
   
   const role = localStorage.getItem("role");
   const canCreateAppointments = role === "Admin" || role === "Receptionist";
   const canDeleteAppointments = role === "Admin" || role === "Receptionist";
   const canEditAppointments = role === "Admin" || role === "Receptionist" || role === "Doctor";
+  const isPastAppointment =
+    editingAppointment != null &&
+    new Date(editingAppointment.appointmentDate) < new Date();
+  const requiredFieldsComplete =
+    doctorId !== "" &&
+    patientId !== "" &&
+    appointmentDate !== "" &&
+    status !== "";
+  const dateError =
+    appointmentDate !== "" &&
+    !isPastAppointment &&
+    new Date(appointmentDate) <= new Date()
+      ? "Appointments must be scheduled in the future."
+      : "";
+  const appointmentChanged =
+    editingAppointment == null ||
+    Number(doctorId) !== editingAppointment.doctorId ||
+    Number(patientId) !== editingAppointment.patientId ||
+    appointmentDate !== editingAppointment.appointmentDate.slice(0, 16) ||
+    status !== editingAppointment.status;
+  const saveDisabled =
+    !requiredFieldsComplete ||
+    dateError !== "" ||
+    !appointmentChanged ||
+    saving;
 
   async function loadData() {
+    setLoading(true);
+
     try {
       const [appointmentsData, doctorsData, patientsData] = await Promise.all([
         getAppointments(),
@@ -51,6 +89,8 @@ function AppointmentsPage() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error loading appointments";
       toast.error(message);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -93,12 +133,38 @@ function AppointmentsPage() {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
+    if (saveDisabled) {
+      return;
+    }
+
     const appointmentPayload = {
-      doctorId: Number(doctorId),
-      patientId: Number(patientId),
-      appointmentDate,
+      doctorId:
+        isPastAppointment && editingAppointment
+          ? editingAppointment.doctorId
+          : Number(doctorId),
+      patientId:
+        isPastAppointment && editingAppointment
+          ? editingAppointment.patientId
+          : Number(patientId),
+      appointmentDate:
+        isPastAppointment && editingAppointment
+          ? editingAppointment.appointmentDate
+          : appointmentDate,
       status,
     };
+
+    if (editingAppointment && status === "Completed") {
+      setAppointmentToComplete({
+        ...appointmentPayload,
+        id: editingAppointment.id,
+        doctorName: editingAppointment.doctorName,
+        patientName: editingAppointment.patientName,
+      });
+      clearAppointmentForm();
+      return;
+    }
+
+    setSaving(true);
 
     try {
       if (editingAppointment) {
@@ -114,16 +180,19 @@ function AppointmentsPage() {
         toast.success("Appointment created successfully");
       }
 
-      setDoctorId("");
-      setPatientId("");
-      setAppointmentDate("");
-      setStatus("Scheduled");
-      setEditingAppointment(null);
+      clearAppointmentForm();
       await loadData();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Something went wrong";
       toast.error(message);
+    } finally {
+      setSaving(false);
     }
+  }
+
+  function handleAddAppointment() {
+    clearAppointmentForm();
+    setIsFormOpen(true);
   }
 
   function handleEdit(appointment: Appointment) {
@@ -132,6 +201,17 @@ function AppointmentsPage() {
     setPatientId(String(appointment.patientId));
     setAppointmentDate(appointment.appointmentDate.slice(0, 16));
     setStatus(appointment.status);
+    setIsFormOpen(true);
+  }
+
+  function clearAppointmentForm() {
+    setEditingAppointment(null);
+    setDoctorId("");
+    setPatientId("");
+    setAppointmentDate("");
+    setStatus("Scheduled");
+    setDoctorAvailability([]);
+    setIsFormOpen(false);
   }
 
   async function confirmDeleteAppointment() {
@@ -150,6 +230,28 @@ function AppointmentsPage() {
     }
 }
 
+  async function confirmCompleteAppointment() {
+    if (!appointmentToComplete) {
+      return;
+    }
+
+    try {
+      await updateAppointment({
+        ...appointmentToComplete,
+        status: "Completed",
+      });
+      toast.success("Appointment marked as completed");
+      setAppointmentToComplete(null);
+      await loadData();
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Error completing appointment";
+      toast.error(message);
+    }
+  }
+
   return (
     <section>
       <div className="page-header">
@@ -158,86 +260,133 @@ function AppointmentsPage() {
       </div>
 
 
-      {canCreateAppointments && ( 
-        <form onSubmit={handleSubmit} className="form-card">
-          <h2>{editingAppointment ? "Edit Appointment" : "Add Appointment"}</h2>
-
-          <div className="appointment-doctor-field">
-            <select
-              value={doctorId}
-              onChange={(event) => setDoctorId(event.target.value)}
-              required
-            >
-              <option value="">Select doctor</option>
-              {doctors.map((doctor) => (
-                <option key={doctor.id} value={doctor.id}>
-                  {doctor.name} - {doctor.specialty}
-                </option>
-              ))}
-            </select>
-
-            {doctorId && (
-              <DoctorAvailabilityPreview
-                doctor={doctors.find(
-                  (doctor) => doctor.id === Number(doctorId)
-                )}
-                availability={doctorAvailability}
-                loading={loadingAvailability}
-              />
-            )}
-          </div>
-
-          <select
-            value={patientId}
-            onChange={(event) => setPatientId(event.target.value)}
-            required
-          >
-            <option value="">Select patient</option>
-            {patients.map((patient) => (
-              <option key={patient.id} value={patient.id}>
-                {patient.name}
-              </option>
-            ))}
-          </select>
-
-          <input
-            type="datetime-local"
-            value={appointmentDate}
-            min={new Date().toISOString().slice(0, 16)}
-            onChange={(event) => setAppointmentDate(event.target.value)}
-            required
-          />
-
-          <select
-            value={status}
-            onChange={(event) => setStatus(event.target.value)}
-          >
-            <option value="Scheduled">Scheduled</option>
-            <option value="Cancelled">Cancelled</option>
-            <option value="Completed">Completed</option>
-          </select>
-
-          <button type="submit">
-            {editingAppointment ? "Update Appointment" : "Add Appointment"}
-          </button>
-
-          {editingAppointment && (
-            <button
-              type="button"
-              onClick={() => {
-                setEditingAppointment(null);
-                setDoctorId("");
-                setPatientId("");
-                setAppointmentDate("");
-                setStatus("Scheduled");
-              }}
-            >
-              Cancel
-            </button>
-          )}
-        </form>
+      {canCreateAppointments && !isFormOpen && (
+        <button
+          type="button"
+          className="add-record-button"
+          onClick={handleAddAppointment}
+        >
+          + New Appointment
+        </button>
       )}
 
+      {isFormOpen && (
+        <Modal
+          titleId="appointment-form-modal-title"
+          title={editingAppointment ? "Edit Appointment" : "New Appointment"}
+          onClose={() => {
+            if (!saving) {
+              clearAppointmentForm();
+            }
+          }}
+        >
+          <FormCard onSubmit={handleSubmit}>
+            {isPastAppointment && (
+              <div className="form-info-message">
+                This appointment is in the past. Only its status can be edited.
+              </div>
+            )}
+
+            <div className="appointment-doctor-field">
+              <label>
+                <span>Doctor</span>
+                <select
+                  value={doctorId}
+                  disabled={isPastAppointment}
+                  onChange={(event) => setDoctorId(event.target.value)}
+                  required
+                >
+                  <option value="">Select doctor</option>
+                  {doctors.map((doctor) => (
+                    <option key={doctor.id} value={doctor.id}>
+                      {doctor.name} - {doctor.specialty}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {doctorId && !isPastAppointment && (
+                <DoctorAvailabilityPreview
+                  doctor={doctors.find(
+                    (doctor) => doctor.id === Number(doctorId)
+                  )}
+                  availability={doctorAvailability}
+                  loading={loadingAvailability}
+                />
+              )}
+            </div>
+
+            <label>
+              <span>Patient</span>
+              <select
+                value={patientId}
+                disabled={isPastAppointment}
+                onChange={(event) => setPatientId(event.target.value)}
+                required
+              >
+                <option value="">Select patient</option>
+                {patients.map((patient) => (
+                  <option key={patient.id} value={patient.id}>
+                    {patient.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <span>Date</span>
+              <input
+                type="datetime-local"
+                value={appointmentDate}
+                disabled={isPastAppointment}
+                min={editingAppointment ? undefined : new Date().toISOString().slice(0, 16)}
+                onChange={(event) => setAppointmentDate(event.target.value)}
+                aria-invalid={dateError !== ""}
+                aria-describedby={dateError ? "appointment-date-error" : undefined}
+                required
+              />
+              {dateError && (
+                <span id="appointment-date-error" className="field-error">
+                  {dateError}
+                </span>
+              )}
+            </label>
+
+            {editingAppointment && (
+              <label>
+                <span>Status</span>
+                <select
+                  value={status}
+                  onChange={(event) => setStatus(event.target.value)}
+                >
+                  <option value="Scheduled">Scheduled</option>
+                  <option value="Cancelled">Cancelled</option>
+                  {(editingAppointment.status === "Scheduled" ||
+                    (isPastAppointment &&
+                      editingAppointment.status === "Cancelled")) && (
+                    <option value="Completed">Completed</option>
+                  )}
+                </select>
+              </label>
+            )}
+
+            <FormActions
+              saving={saving}
+              saveDisabled={saveDisabled}
+              onCancel={clearAppointmentForm}
+              saveText={
+                editingAppointment
+                  ? "Update Appointment"
+                  : "Save Appointment"
+              }
+            />
+          </FormCard>
+        </Modal>
+      )}
+
+      {loading ? (
+        <p className="loading-state">Loading appointments...</p>
+      ) : (
       <div className="table-card">
         <table>
           <thead>
@@ -252,11 +401,10 @@ function AppointmentsPage() {
 
           <tbody>
             {appointments.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="empty-state">
-                  No appointments found.
-                </td>
-              </tr>
+              <EmptyState
+                message="No appointments found."
+                colSpan={canEditAppointments ? 5 : 4}
+              />
             ) : (
               appointments.map((appointment) => (
                 <tr key={appointment.id}>
@@ -264,16 +412,31 @@ function AppointmentsPage() {
                   <td>{appointment.patientName}</td>
                   <td>{new Date(appointment.appointmentDate).toLocaleString("es-ES", {dateStyle: "medium",timeStyle: "short"})}</td>
                   <td>
-                    <span
-                      className={`status status-${appointment.status.toLowerCase()}`}
-                    >
-                      {appointment.status}
-                    </span>
+                    <AppointmentStatusBadge status={appointment.status} />
                   </td>
                   {canEditAppointments && (
                     <td>
-                      <button onClick={() => handleEdit(appointment)}>Edit</button>
-                      {canDeleteAppointments && (
+                      {appointment.status === "Completed" && (
+                        <StatusBadge
+                          active={false}
+                          inactiveLabel="✓ Finalized"
+                        />
+                      )}
+                      {appointment.status !== "Completed" && (
+                        <button onClick={() => handleEdit(appointment)}>
+                          Edit
+                        </button>
+                      )}
+                      {appointment.status === "Scheduled" && (
+                        <button
+                          className="complete-button"
+                          onClick={() => setAppointmentToComplete(appointment)}
+                        >
+                          Mark completed
+                        </button>
+                      )}
+                      {canDeleteAppointments &&
+                        appointment.status !== "Completed" && (
                         <button onClick={() => setAppointmentToDelete(appointment)}>
                           Delete
                         </button>
@@ -286,6 +449,7 @@ function AppointmentsPage() {
           </tbody>
         </table>
       </div>
+      )}
       
       {appointmentToDelete && (
         <ConfirmModal
@@ -300,6 +464,16 @@ function AppointmentsPage() {
           confirmText="Delete"
           onCancel={() => setAppointmentToDelete(null)}
           onConfirm={confirmDeleteAppointment}
+        />
+      )}
+
+      {appointmentToComplete && (
+        <ConfirmModal
+          title="Mark appointment as completed?"
+          message="Once completed, the appointment can no longer be edited or deleted."
+          confirmText="Mark completed"
+          onCancel={() => setAppointmentToComplete(null)}
+          onConfirm={confirmCompleteAppointment}
         />
       )}
     </section>

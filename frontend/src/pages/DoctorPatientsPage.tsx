@@ -5,6 +5,8 @@ import {
   getDoctorPatients,
   type DoctorPatient,
 } from "../api/clinicApi";
+import StatusBadge from "../components/StatusBadge";
+import EmptyState from "../components/EmptyState";
 
 function DoctorPatientsPage() {
   const [patients, setPatients] = useState<DoctorPatient[]>([]);
@@ -37,6 +39,7 @@ function DoctorPatientsPage() {
               <th>Name</th>
               <th>Email</th>
               <th>Phone Number</th>
+              <th>Status</th>
               <th>Appointments</th>
               <th>Latest Appointment</th>
               <th>Details</th>
@@ -44,17 +47,16 @@ function DoctorPatientsPage() {
           </thead>
           <tbody>
             {patients.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="empty-state">
-                  No patients to show.
-                </td>
-              </tr>
+              <EmptyState message="No patients to show." colSpan={7} />
             ) : (
               patients.map((patient) => (
                 <tr key={patient.id}>
                   <td>{patient.name}</td>
                   <td>{patient.email}</td>
                   <td>{patient.phoneNumber || "—"}</td>
+                  <td>
+                    <StatusBadge active={patient.isActive} />
+                  </td>
                   <td>{patient.appointmentCount}</td>
                   <td>
                     {new Date(patient.lastAppointmentDate).toLocaleString("es-CR", {

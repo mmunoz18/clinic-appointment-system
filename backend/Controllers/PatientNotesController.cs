@@ -71,6 +71,15 @@ public class PatientNotesController : ControllerBase
         int patientId,
         [FromBody] PatientNoteRequest request)
     {
+        var patientIsActive = await _context.Patients
+            .AsNoTracking()
+            .AnyAsync(patient => patient.Id == patientId && patient.IsActive);
+
+        if (!patientIsActive)
+        {
+            return BadRequest("Cannot add notes to an inactive patient.");
+        }
+
         var accessError = await ValidatePatientAccessAsync(patientId);
         if (accessError != null)
         {

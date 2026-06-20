@@ -5,12 +5,19 @@ import {
   createDoctorAvailability,
   deactivateDoctorAvailability,
   getDoctorAvailability,
+  getDoctorAvailabilitySummary,
   getDoctors,
   getMyDoctorProfile,
   updateDoctorAvailability,
   type Doctor,
   type DoctorAvailability,
+  type DoctorAvailabilitySummary,
 } from "../api/clinicApi";
+import EmptyState from "../components/EmptyState";
+import StatusBadge from "../components/StatusBadge";
+import FormActions from "../components/FormActions";
+import FormCard from "../components/FormCard";
+import Modal from "../components/Modal";
 
 type AvailabilityWindow = {
   key: string;
@@ -60,17 +67,40 @@ function createDefaultRows(): AvailabilityDay[] {
 
 function DoctorAvailabilityPage() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [summary, setSummary] = useState<DoctorAvailabilitySummary[]>([]);
   const [doctorId, setDoctorId] = useState("");
   const [rows, setRows] = useState<AvailabilityDay[]>(createDefaultRows);
+  const [savedRows, setSavedRows] = useState<AvailabilityDay[]>(createDefaultRows);
   const [removedAvailabilityIds, setRemovedAvailabilityIds] = useState<number[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingAvailability, setLoadingAvailability] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
   const role = localStorage.getItem("role");
   const isAdmin = role === "Admin";
+  const isReceptionist = role === "Receptionist";
   const isDoctor = role === "Doctor";
+  const windowErrors = getWindowErrors(rows);
+  const hasValidationErrors = Object.keys(windowErrors).length > 0;
+  const hasChanges =
+    availabilitySignature(rows) !== availabilitySignature(savedRows) ||
+    removedAvailabilityIds.length > 0;
+  const saveDisabled =
+    !doctorId ||
+    !hasChanges ||
+    hasValidationErrors ||
+    saving;
 
   const loadDoctors = useCallback(async () => {
     try {
-      setDoctors(await getDoctors());
+      const [doctorsData, summaryData] = await Promise.all([
+        getDoctors(true),
+        getDoctorAvailabilitySummary(),
+      ]);
+
+      setDoctors(doctorsData);
+      setSummary(summaryData);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Error loading doctors";
@@ -80,57 +110,44 @@ function DoctorAvailabilityPage() {
 
   useEffect(() => {
     async function loadPage() {
-      if (isAdmin) {
-        await loadDoctors();
-        return;
-      }
+      try {
+        if (isAdmin) {
+          await loadDoctors();
+          return;
+        }
 
-      if (isDoctor) {
-        try {
+        if (isReceptionist) {
+          setSummary(await getDoctorAvailabilitySummary());
+          return;
+        }
+
+        if (isDoctor) {
           const doctor = await getMyDoctorProfile();
           setDoctors([doctor]);
           setDoctorId(String(doctor.id));
 
           const availability = await getDoctorAvailability(doctor.id);
-          setRows(buildRows(availability));
+          const loadedRows = buildRows(availability);
+          setRows(loadedRows);
+          setSavedRows(cloneRows(loadedRows));
           setRemovedAvailabilityIds([]);
-        } catch (error) {
-          const message =
-            error instanceof Error
-              ? error.message
-              : "Error loading your availability";
-          toast.error(message);
         }
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Error loading availability";
+        toast.error(message);
+      } finally {
+        setLoading(false);
       }
     }
 
     loadPage();
-  }, [isAdmin, isDoctor, loadDoctors]);
+  }, [isAdmin, isDoctor, isReceptionist, loadDoctors]);
 
-  if (!isAdmin && !isDoctor) {
+  if (!isAdmin && !isReceptionist && !isDoctor) {
     return <Navigate to="/" replace />;
-  }
-
-  async function handleDoctorChange(selectedDoctorId: string) {
-    setDoctorId(selectedDoctorId);
-
-    if (!selectedDoctorId) {
-      setRows(createDefaultRows());
-      setRemovedAvailabilityIds([]);
-      return;
-    }
-
-    try {
-      const availability = await getDoctorAvailability(Number(selectedDoctorId));
-      setRows(buildRows(availability));
-      setRemovedAvailabilityIds([]);
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Error loading doctor availability";
-      toast.error(message);
-    }
   }
 
   function updateWindow(
@@ -184,24 +201,9 @@ function DoctorAvailabilityPage() {
 
   async function handleSave(event: React.FormEvent) {
     event.preventDefault();
+    setFormError("");
 
-    if (!doctorId) {
-      return;
-    }
-
-    const invalidDay = rows.find((day) =>
-      day.windows.some((window) => window.startTime >= window.endTime)
-    );
-
-    if (invalidDay) {
-      toast.error(`${invalidDay.label}: start time must be before end time`);
-      return;
-    }
-
-    const overlappingDay = rows.find((day) => hasOverlappingWindows(day.windows));
-
-    if (overlappingDay) {
-      toast.error(`${overlappingDay.label}: availability windows cannot overlap`);
+    if (saveDisabled) {
       return;
     }
 
@@ -229,17 +231,65 @@ function DoctorAvailabilityPage() {
       }
 
       const availability = await getDoctorAvailability(Number(doctorId));
-      setRows(buildRows(availability));
+      const loadedRows = buildRows(availability);
+      setRows(loadedRows);
+      setSavedRows(cloneRows(loadedRows));
       setRemovedAvailabilityIds([]);
+      setIsFormOpen(false);
+      if (isAdmin) {
+        setSummary(await getDoctorAvailabilitySummary());
+      }
       toast.success("Doctor availability saved successfully");
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
           : "Error saving doctor availability";
+      setFormError(message);
       toast.error(message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  function closeAvailabilityForm() {
+    if (saving) {
+      return;
+    }
+
+    setRows(cloneRows(savedRows));
+    setRemovedAvailabilityIds([]);
+    setFormError("");
+    setIsFormOpen(false);
+  }
+
+  const selectedDoctor = doctors.find(
+    (doctor) => doctor.id === Number(doctorId)
+  );
+  const hasSavedAvailability = savedRows.some(
+    (day) => day.windows.length > 0
+  );
+
+  async function openAvailabilityForm(summaryDoctor: DoctorAvailabilitySummary) {
+    setDoctorId(String(summaryDoctor.id));
+    setFormError("");
+    setLoadingAvailability(true);
+
+    try {
+      const availability = await getDoctorAvailability(summaryDoctor.id);
+      const loadedRows = buildRows(availability);
+      setRows(loadedRows);
+      setSavedRows(cloneRows(loadedRows));
+      setRemovedAvailabilityIds([]);
+      setIsFormOpen(true);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Error loading doctor availability";
+      toast.error(message);
+    } finally {
+      setLoadingAvailability(false);
     }
   }
 
@@ -250,103 +300,275 @@ function DoctorAvailabilityPage() {
         <p>
           {isDoctor
             ? "Configure your weekly working hours for appointment scheduling."
+            : isReceptionist
+              ? "Review doctors' weekly working hours for appointment scheduling."
             : "Configure the weekly working hours used for appointment scheduling."}
         </p>
       </div>
 
-      <form className="availability-card" onSubmit={handleSave}>
-        {isAdmin ? (
-          <label className="availability-doctor-select">
-            <span>Select Doctor</span>
-            <select
-              value={doctorId}
-              onChange={(event) => handleDoctorChange(event.target.value)}
-              required
-            >
-              <option value="">Select doctor</option>
-              {doctors.map((doctor) => (
-                <option key={doctor.id} value={doctor.id}>
-                  {doctor.name} — {doctor.specialty}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : (
-          <div className="availability-profile-summary">
-            <span>Doctor Profile</span>
-            <strong>
-              {doctors[0]
-                ? `${doctors[0].name} — ${doctors[0].specialty}`
-                : "Loading doctor profile..."}
-            </strong>
-          </div>
-        )}
-
-        <div className="availability-list">
-          {rows.map((day) => (
-            <div className="availability-day-card" key={day.dayOfWeek}>
-              <div className="availability-day-header">
-                <strong>{day.label}</strong>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  disabled={!doctorId}
-                  onClick={() => addWindow(day.dayOfWeek)}
-                >
-                  Add time
-                </button>
-              </div>
-
-              {day.windows.length === 0 ? (
-                <p className="availability-unavailable">Unavailable</p>
+      {loading ? (
+        <p className="loading-state">Loading availability...</p>
+      ) : isAdmin || isReceptionist ? (
+        <div className="table-card availability-summary-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Doctor</th>
+                <th>Specialty</th>
+                <th>Weekly Availability</th>
+                <th>Coverage</th>
+                <th>Status</th>
+                {isAdmin && <th>Action</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {summary.length === 0 ? (
+                <EmptyState
+                  message="No doctors found."
+                  colSpan={isAdmin ? 6 : 5}
+                />
               ) : (
-                day.windows.map((window) => (
-                  <div className="availability-row" key={window.key}>
-                    <input
-                      type="time"
-                      value={window.startTime}
-                      disabled={!doctorId}
-                      onChange={(event) =>
-                        updateWindow(day.dayOfWeek, window.key, {
-                          startTime: event.target.value,
-                        })
-                      }
-                      required
-                    />
+                summary.map((doctor) => {
+                  const configuredDays = new Set(
+                    doctor.availability.map((item) => item.dayOfWeek)
+                  ).size;
+                  const isConfigured = doctor.availability.length > 0;
 
-                    <span className="availability-separator">to</span>
-
-                    <input
-                      type="time"
-                      value={window.endTime}
-                      disabled={!doctorId}
-                      onChange={(event) =>
-                        updateWindow(day.dayOfWeek, window.key, {
-                          endTime: event.target.value,
-                        })
-                      }
-                      required
-                    />
-
+                  return (
+                    <tr key={doctor.id}>
+                      <td>{doctor.name}</td>
+                      <td>{doctor.specialty}</td>
+                      <td>
+                        {isConfigured ? (
+                          <div className="availability-summary-days">
+                            {formatAvailabilitySummary(doctor.availability)}
+                          </div>
+                        ) : (
+                          <span className="muted-text">None configured</span>
+                        )}
+                      </td>
+                      <td>
+                        {isConfigured
+                          ? `${configuredDays} ${
+                              configuredDays === 1 ? "day" : "days"
+                            }`
+                          : "—"}
+                      </td>
+                      <td>
+                        {!doctor.isActive ? (
+                          <StatusBadge active={false} />
+                        ) : isConfigured ? (
+                          <StatusBadge
+                            active
+                            activeLabel="Configured"
+                          />
+                        ) : (
+                          <span className="status status-cancelled">
+                            Missing availability
+                          </span>
+                        )}
+                      </td>
+                      {isAdmin && (
+                        <td>
+                          <button
+                            type="button"
+                            disabled={!doctor.isActive || loadingAvailability}
+                            onClick={() => openAvailabilityForm(doctor)}
+                          >
+                            {isConfigured ? "Edit" : "Configure"}
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="table-card availability-summary-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Doctor</th>
+                <th>Specialty</th>
+                <th>Weekly Availability</th>
+                <th>Coverage</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {!doctors[0] ? (
+                <EmptyState
+                  message="Doctor profile not found."
+                  colSpan={6}
+                />
+              ) : (
+                <tr>
+                  <td>{doctors[0].name}</td>
+                  <td>{doctors[0].specialty}</td>
+                  <td>
+                    {hasSavedAvailability ? (
+                      <div className="availability-summary-days">
+                        {formatAvailabilityRows(savedRows)}
+                      </div>
+                    ) : (
+                      <span className="muted-text">None configured</span>
+                    )}
+                  </td>
+                  <td>
+                    {hasSavedAvailability
+                      ? `${countConfiguredDays(savedRows)} ${
+                          countConfiguredDays(savedRows) === 1
+                            ? "day"
+                            : "days"
+                        }`
+                      : "—"}
+                  </td>
+                  <td>
+                    {!doctors[0].isActive ? (
+                      <StatusBadge active={false} />
+                    ) : hasSavedAvailability ? (
+                      <StatusBadge active activeLabel="Configured" />
+                    ) : (
+                      <span className="status status-cancelled">
+                        Missing availability
+                      </span>
+                    )}
+                  </td>
+                  <td>
                     <button
                       type="button"
-                      className="danger-button"
-                      disabled={!doctorId}
-                      onClick={() => removeWindow(day.dayOfWeek, window)}
+                      disabled={
+                        !doctors[0].isActive ||
+                        !doctorId ||
+                        loadingAvailability
+                      }
+                      onClick={() => setIsFormOpen(true)}
                     >
-                      Remove
+                      {hasSavedAvailability ? "Edit" : "Configure"}
+                    </button>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {isFormOpen && doctorId && (isAdmin || isDoctor) && (
+        <Modal
+          titleId="availability-form-modal-title"
+          title={
+            isDoctor
+              ? "Edit My Availability"
+              : `${hasSavedAvailability ? "Edit" : "Add"} Availability`
+          }
+          onClose={closeAvailabilityForm}
+        >
+          <FormCard onSubmit={handleSave}>
+            <div className="availability-profile-summary">
+              <span>Doctor Profile</span>
+              <strong>
+                {selectedDoctor
+                  ? `${selectedDoctor.name} — ${selectedDoctor.specialty}`
+                  : "Doctor"}
+              </strong>
+            </div>
+
+            {formError && (
+              <div className="form-error-message">{formError}</div>
+            )}
+
+            <div className="availability-list">
+              {rows.map((day) => (
+                <div className="availability-day-card" key={day.dayOfWeek}>
+                  <div className="availability-day-header">
+                    <strong>{day.label}</strong>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      disabled={saving}
+                      onClick={() => addWindow(day.dayOfWeek)}
+                    >
+                      Add time
                     </button>
                   </div>
-                ))
-              )}
-            </div>
-          ))}
-        </div>
 
-        <button type="submit" disabled={!doctorId || saving}>
-          {saving ? "Saving..." : "Save Availability"}
-        </button>
-      </form>
+                  {day.windows.length === 0 ? (
+                    <p className="availability-unavailable">Unavailable</p>
+                  ) : (
+                    day.windows.map((window) => {
+                      const windowError = windowErrors[window.key];
+
+                      return (
+                        <div
+                          className="availability-window-group"
+                          key={window.key}
+                        >
+                          <div className="availability-row">
+                            <input
+                              type="time"
+                              value={window.startTime}
+                              disabled={saving}
+                              aria-invalid={Boolean(windowError)}
+                              onChange={(event) =>
+                                updateWindow(day.dayOfWeek, window.key, {
+                                  startTime: event.target.value,
+                                })
+                              }
+                              required
+                            />
+
+                            <span className="availability-separator">to</span>
+
+                            <input
+                              type="time"
+                              value={window.endTime}
+                              disabled={saving}
+                              aria-invalid={Boolean(windowError)}
+                              onChange={(event) =>
+                                updateWindow(day.dayOfWeek, window.key, {
+                                  endTime: event.target.value,
+                                })
+                              }
+                              required
+                            />
+
+                            <button
+                              type="button"
+                              className="danger-button"
+                              disabled={saving}
+                              onClick={() =>
+                                removeWindow(day.dayOfWeek, window)
+                              }
+                            >
+                              Remove
+                            </button>
+                          </div>
+
+                          {windowError && (
+                            <span className="field-error">{windowError}</span>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <FormActions
+              saving={saving}
+              saveDisabled={saveDisabled}
+              onCancel={closeAvailabilityForm}
+              saveText="Save Availability"
+            />
+          </FormCard>
+        </Modal>
+      )}
     </section>
   );
 }
@@ -367,15 +589,116 @@ function buildRows(
   }));
 }
 
-function hasOverlappingWindows(windows: AvailabilityWindow[]) {
-  const sorted = [...windows].sort((a, b) =>
-    a.startTime.localeCompare(b.startTime)
-  );
+function cloneRows(rows: AvailabilityDay[]): AvailabilityDay[] {
+  return rows.map((day) => ({
+    ...day,
+    windows: day.windows.map((window) => ({ ...window })),
+  }));
+}
 
-  return sorted.some(
-    (window, index) =>
-      index > 0 && window.startTime < sorted[index - 1].endTime
+function availabilitySignature(rows: AvailabilityDay[]) {
+  return JSON.stringify(
+    rows.map((day) => ({
+      dayOfWeek: day.dayOfWeek,
+      windows: day.windows
+        .map((window) => ({
+          availabilityId: window.availabilityId,
+          startTime: window.startTime,
+          endTime: window.endTime,
+        }))
+        .sort((a, b) => a.startTime.localeCompare(b.startTime)),
+    }))
   );
+}
+
+function getWindowErrors(rows: AvailabilityDay[]) {
+  const errors: Record<string, string> = {};
+
+  for (const day of rows) {
+    for (const window of day.windows) {
+      if (!window.startTime || !window.endTime) {
+        errors[window.key] = "Start and end time are required.";
+      } else if (window.startTime >= window.endTime) {
+        errors[window.key] = "Start time must be before end time.";
+      }
+    }
+
+    for (let index = 0; index < day.windows.length; index += 1) {
+      for (
+        let comparisonIndex = index + 1;
+        comparisonIndex < day.windows.length;
+        comparisonIndex += 1
+      ) {
+        const first = day.windows[index];
+        const second = day.windows[comparisonIndex];
+        const overlaps =
+          first.startTime < second.endTime &&
+          first.endTime > second.startTime;
+
+        if (overlaps) {
+          errors[first.key] = `Overlaps another ${day.label} window.`;
+          errors[second.key] = `Overlaps another ${day.label} window.`;
+        }
+      }
+    }
+  }
+
+  return errors;
+}
+
+const summaryDayLabels: Record<number, string> = {
+  0: "Sun",
+  1: "Mon",
+  2: "Tue",
+  3: "Wed",
+  4: "Thu",
+  5: "Fri",
+  6: "Sat",
+};
+
+function formatAvailabilitySummary(availability: DoctorAvailability[]) {
+  return days
+    .map((day) => {
+      const windows = availability
+        .filter((item) => item.dayOfWeek === day.dayOfWeek)
+        .sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+      if (windows.length === 0) {
+        return null;
+      }
+
+      return (
+        <span key={day.dayOfWeek}>
+          <strong>{summaryDayLabels[day.dayOfWeek]}</strong>{" "}
+          {windows
+            .map(
+              (window) =>
+                `${window.startTime.slice(0, 5)}–${window.endTime.slice(0, 5)}`
+            )
+            .join(", ")}
+        </span>
+      );
+    })
+    .filter(Boolean);
+}
+
+function formatAvailabilityRows(rows: AvailabilityDay[]) {
+  return rows
+    .filter((day) => day.windows.length > 0)
+    .map((day) => (
+      <span key={day.dayOfWeek}>
+        <strong>{summaryDayLabels[day.dayOfWeek]}</strong>{" "}
+        {day.windows
+          .slice()
+          .sort((a, b) => a.startTime.localeCompare(b.startTime))
+          .map((window) => `${window.startTime}–${window.endTime}`)
+          .join(", ")}
+      </span>
+    ));
+}
+
+function countConfiguredDays(rows: AvailabilityDay[]) {
+  return rows.filter((day) => day.windows.length > 0).length;
 }
 
 export default DoctorAvailabilityPage;

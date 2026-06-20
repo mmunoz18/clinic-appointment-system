@@ -39,7 +39,7 @@ function Layout() {
           {isAdmin && (
             <NavLink to="/users">User Access</NavLink>
           )}
-          {isAdmin && (
+          {(isAdmin || isReceptionist) && (
             <NavLink to="/doctor-availability">Doctor Availability</NavLink>
           )}
         </nav>

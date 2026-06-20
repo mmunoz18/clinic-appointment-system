@@ -9,6 +9,9 @@ import {
   type Patient,
   type PatientNote,
 } from "../api/clinicApi";
+import FormActions from "../components/FormActions";
+import StatusBadge from "../components/StatusBadge";
+import EmptyState from "../components/EmptyState";
 
 function PatientDetailsPage() {
   const { id } = useParams();
@@ -21,6 +24,11 @@ function PatientDetailsPage() {
   const [editingNote, setEditingNote] = useState<PatientNote | null>(null);
   const [saving, setSaving] = useState(false);
   const isDoctor = role === "Doctor";
+  const trimmedNote = noteText.trim();
+  const hasChanges =
+    trimmedNote !== "" &&
+    (editingNote == null || trimmedNote !== editingNote.note.trim());
+  const saveDisabled = !hasChanges || saving;
 
   useEffect(() => {
     async function loadPatientDetails() {
@@ -69,14 +77,19 @@ function PatientDetailsPage() {
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+
+    if (saveDisabled) {
+      return;
+    }
+
     setSaving(true);
 
     try {
       if (editingNote) {
-        await updatePatientNote(editingNote.id, noteText);
+        await updatePatientNote(editingNote.id, trimmedNote);
         toast.success("Patient note updated successfully");
       } else {
-        await createPatientNote(patientId, noteText);
+        await createPatientNote(patientId, trimmedNote);
         toast.success("Patient note added successfully");
       }
 
@@ -127,7 +140,7 @@ function PatientDetailsPage() {
           </div>
           <div>
             <span>Status</span>
-            <strong>{patient.isActive ? "Active" : "Inactive"}</strong>
+            <StatusBadge active={patient.isActive} />
           </div>
         </div>
       )}
@@ -140,7 +153,7 @@ function PatientDetailsPage() {
           </div>
         </div>
 
-        {isDoctor && (
+        {isDoctor && patient?.isActive && (
           <form className="note-form" onSubmit={handleSubmit}>
             <label htmlFor="patient-note">
               {editingNote ? "Edit note" : "Add note"}
@@ -156,29 +169,19 @@ function PatientDetailsPage() {
             />
             <div className="note-form-actions">
               <span>{noteText.length}/4000</span>
-              {editingNote && (
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={clearNoteForm}
-                >
-                  Cancel
-                </button>
-              )}
-              <button type="submit" disabled={saving}>
-                {saving
-                  ? "Saving..."
-                  : editingNote
-                    ? "Update Note"
-                    : "Add Note"}
-              </button>
+              <FormActions
+                saving={saving}
+                saveDisabled={saveDisabled}
+                onCancel={clearNoteForm}
+                saveText={editingNote ? "Update Note" : "Save Note"}
+              />
             </div>
           </form>
         )}
 
         <div className="notes-list">
           {notes.length === 0 ? (
-            <div className="empty-state">No medical notes to show.</div>
+            <EmptyState message="No medical notes to show." />
           ) : (
             notes.map((note) => (
               <article className="note-card" key={note.id}>

@@ -208,6 +208,14 @@ td button.activate-button:hover {
   background: #15803d;
 }
 
+td button.complete-button {
+  background: #16a34a;
+}
+
+td button.complete-button:hover {
+  background: #15803d;
+}
+
 .form-card {
   background: white;
   border-radius: 14px;
@@ -281,6 +289,34 @@ td button.activate-button:hover {
   padding-top: 4px;
 }
 
+.form-info-message {
+  padding: 12px 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.field-error {
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+input[aria-invalid="true"],
+select[aria-invalid="true"] {
+  border-color: #dc2626;
+}
+
+.loading-state {
+  padding: 24px;
+  color: #6b7280;
+  text-align: center;
+}
+
 .availability-card {
   max-width: 720px;
   padding: 24px;
@@ -317,6 +353,21 @@ td button.activate-button:hover {
   color: #1e3a8a;
 }
 
+.availability-summary-table {
+  margin-top: 0;
+}
+
+.availability-summary-days {
+  display: grid;
+  gap: 4px;
+  min-width: 220px;
+  font-size: 13px;
+}
+
+.availability-summary-days span {
+  white-space: nowrap;
+}
+
 .availability-list {
   display: grid;
   gap: 12px;
@@ -348,9 +399,28 @@ td button.activate-button:hover {
   margin-top: 10px;
 }
 
+.availability-window-group + .availability-window-group {
+  margin-top: 10px;
+}
+
+.availability-window-group .field-error {
+  display: block;
+  margin-top: 6px;
+}
+
 .availability-unavailable {
   margin: 0;
   color: #6b7280;
+}
+
+.form-error-message {
+  padding: 12px 14px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .availability-separator {
@@ -789,9 +859,14 @@ button:active {
 
 .reusable-modal-card {
   max-width: 560px;
+  max-height: calc(100dvh - 48px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .modal-header {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -821,12 +896,29 @@ button:active {
   background: #e5e7eb;
 }
 
+.modal-content {
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
 .reusable-modal-card .standard-form-card {
   max-width: none;
   margin: 0;
   padding: 0;
   border: 0;
   box-shadow: none;
+}
+
+@media (max-width: 760px) {
+  .modal-backdrop {
+    padding: 12px;
+  }
+
+  .reusable-modal-card {
+    max-height: calc(100dvh - 24px);
+    padding: 20px;
+  }
 }
 
 .modal-card p {

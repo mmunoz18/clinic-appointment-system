@@ -17,16 +17,33 @@ import StatusBadge from "../components/StatusBadge";
 
 function DoctorsPage() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [specialty, setSpecialty] = useState("");
   const [cedula, setCedula] = useState("");
   const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showValidation, setShowValidation] = useState(false);
+  const [serverErrors, setServerErrors] = useState<
+    Partial<Record<"name" | "specialty" | "cedula", string>>
+  >({});
   const [doctorToDeactivate, setDoctorToDeactivate] = useState<Doctor | null>(null);
 
   const role = localStorage.getItem("role");
   const canManageDoctors = role === "Admin";
+  const nameError =
+    showValidation && name.trim() === "" ? "Name is required." : "";
+  const specialtyError =
+    showValidation && specialty.trim() === ""
+      ? "Specialty is required."
+      : "";
+  const cedulaError =
+    showValidation && cedula.trim() === ""
+      ? "Cedula is required."
+      : cedula.trim() !== "" && cedula.trim().length !== 9
+        ? "Cedula must be 9 characters long."
+        : "";
   const requiredFieldsComplete =
     name.trim() !== "" &&
     specialty.trim() !== "" &&
@@ -38,16 +55,21 @@ function DoctorsPage() {
     cedula.trim() !== editingDoctor.cedula;
   const saveDisabled =
     !requiredFieldsComplete ||
+    cedula.trim().length !== 9 ||
     !doctorChanged ||
     saving;
 
   const loadDoctors = useCallback(async () => {
+    setLoading(true);
+
     try {
       const data = await getDoctors(canManageDoctors);
       setDoctors(data);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error loading doctors";
       toast.error(message);
+    } finally {
+      setLoading(false);
     }
   }, [canManageDoctors]);
 
@@ -61,6 +83,8 @@ function DoctorsPage() {
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    setShowValidation(true);
+    setServerErrors({});
 
     if (saveDisabled) {
       return;
@@ -91,6 +115,16 @@ function DoctorsPage() {
       await loadDoctors();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error saving doctor";
+      const normalizedMessage = message.toLowerCase();
+
+      if (normalizedMessage.includes("cedula")) {
+        setServerErrors({ cedula: message });
+      } else if (normalizedMessage.includes("specialty")) {
+        setServerErrors({ specialty: message });
+      } else if (normalizedMessage.includes("name")) {
+        setServerErrors({ name: message });
+      }
+
       toast.error(message);
     } finally {
       setSaving(false);
@@ -115,6 +149,8 @@ function DoctorsPage() {
     setName("");
     setSpecialty("");
     setCedula("");
+    setShowValidation(false);
+    setServerErrors({});
     setIsFormOpen(false);
   }
 
@@ -180,9 +216,19 @@ function DoctorsPage() {
               <input
                 type="text"
                 value={name}
-                onChange={(event) => setName(event.target.value)}
+                onChange={(event) => {
+                  setName(event.target.value);
+                  setServerErrors((current) => ({ ...current, name: undefined }));
+                }}
+                onBlur={() => setShowValidation(true)}
+                aria-invalid={Boolean(nameError || serverErrors.name)}
                 required
               />
+              {(nameError || serverErrors.name) && (
+                <span className="field-error">
+                  {nameError || serverErrors.name}
+                </span>
+              )}
             </label>
 
             <label>
@@ -190,9 +236,24 @@ function DoctorsPage() {
               <input
                 type="text"
                 value={specialty}
-                onChange={(event) => setSpecialty(event.target.value)}
+                onChange={(event) => {
+                  setSpecialty(event.target.value);
+                  setServerErrors((current) => ({
+                    ...current,
+                    specialty: undefined,
+                  }));
+                }}
+                onBlur={() => setShowValidation(true)}
+                aria-invalid={Boolean(
+                  specialtyError || serverErrors.specialty
+                )}
                 required
               />
+              {(specialtyError || serverErrors.specialty) && (
+                <span className="field-error">
+                  {specialtyError || serverErrors.specialty}
+                </span>
+              )}
             </label>
 
             <label>
@@ -200,9 +261,22 @@ function DoctorsPage() {
               <input
                 type="text"
                 value={cedula}
-                onChange={(event) => setCedula(event.target.value)}
+                onChange={(event) => {
+                  setCedula(event.target.value);
+                  setServerErrors((current) => ({
+                    ...current,
+                    cedula: undefined,
+                  }));
+                }}
+                onBlur={() => setShowValidation(true)}
+                aria-invalid={Boolean(cedulaError || serverErrors.cedula)}
                 required
               />
+              {(cedulaError || serverErrors.cedula) && (
+                <span className="field-error">
+                  {cedulaError || serverErrors.cedula}
+                </span>
+              )}
             </label>
 
             <FormActions
@@ -215,6 +289,9 @@ function DoctorsPage() {
         </Modal>
       )}
 
+      {loading ? (
+        <p className="loading-state">Loading doctors...</p>
+      ) : (
       <div className="table-card">
         <table>
           <thead>
@@ -269,6 +346,7 @@ function DoctorsPage() {
           </tbody>
         </table>
       </div>
+      )}
       
       {doctorToDeactivate && (
         <ConfirmModal

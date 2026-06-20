@@ -41,6 +41,62 @@ public class DoctorAvailabilityController : ControllerBase
         return Ok(availability);
     }
 
+    [HttpGet("/api/doctor-availability/summary")]
+    [Authorize(Policy = "AdminOrReceptionist")]
+    public async Task<IActionResult> GetAvailabilitySummary()
+    {
+        var doctorsQuery = _context.Doctors.AsNoTracking();
+
+        if (User.IsInRole("Receptionist"))
+        {
+            doctorsQuery = doctorsQuery.Where(doctor => doctor.IsActive);
+        }
+
+        var doctors = await doctorsQuery
+            .Select(doctor => new
+            {
+                doctor.Id,
+                doctor.Name,
+                doctor.Specialty,
+                doctor.IsActive
+            })
+            .ToListAsync();
+
+        var availability = await _context.DoctorAvailabilities
+            .AsNoTracking()
+            .Where(item => item.IsActive)
+            .OrderBy(item => item.DayOfWeek)
+            .ThenBy(item => item.StartTime)
+            .Select(item => new
+            {
+                item.Id,
+                item.DoctorId,
+                item.DayOfWeek,
+                item.StartTime,
+                item.EndTime,
+                item.IsActive
+            })
+            .ToListAsync();
+
+        var summary = doctors
+            .Select(doctor => new
+            {
+                doctor.Id,
+                doctor.Name,
+                doctor.Specialty,
+                doctor.IsActive,
+                Availability = availability
+                    .Where(item => item.DoctorId == doctor.Id)
+                    .ToList()
+            })
+            .OrderBy(doctor => !doctor.IsActive)
+            .ThenBy(doctor => doctor.Availability.Count > 0)
+            .ThenBy(doctor => doctor.Name)
+            .ToList();
+
+        return Ok(summary);
+    }
+
     [HttpGet("/api/doctor-profile")]
     [Authorize(Roles = "Doctor")]
     public async Task<IActionResult> GetLoggedInDoctorProfile()

@@ -125,6 +125,11 @@ public class PatientsController : ControllerBase
                 return NotFound();
             }
 
+            if (!existingPatient.IsActive)
+            {
+                return BadRequest("Inactive patients cannot be edited.");
+            }
+
             existingPatient.Name = patient.Name.Trim();
             existingPatient.Email = patient.Email.Trim().ToLower();
             existingPatient.Cedula = patient.Cedula.Trim();

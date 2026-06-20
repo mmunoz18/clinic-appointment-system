@@ -7,6 +7,9 @@ import {
   type User,
 } from "../api/clinicApi";
 import { toast } from "react-toastify";
+import FormActions from "../components/FormActions";
+import Modal from "../components/Modal";
+import EmptyState from "../components/EmptyState";
 
 const roles = ["Admin", "Receptionist", "Doctor"];
 
@@ -17,6 +20,7 @@ function UsersPage() {
     Record<number, { role: string; doctorId: number | null }>
   >({});
   const [saving, setSaving] = useState(false);
+  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
 
   const changedUsers = users.filter((user) => {
     const draft = drafts[user.id];
@@ -26,6 +30,7 @@ function UsersPage() {
       (draft.role !== user.role || draft.doctorId !== user.doctorId)
     );
   });
+  const hasChanges = changedUsers.length > 0;
 
   async function loadData() {
     try {
@@ -59,7 +64,7 @@ function UsersPage() {
   }, []);
 
   async function saveAllChanges() {
-    if (changedUsers.length === 0) {
+    if (!hasChanges) {
       return;
     }
 
@@ -80,7 +85,24 @@ function UsersPage() {
       await loadData();
     } finally {
       setSaving(false);
+      setShowSaveConfirmation(false);
     }
+  }
+
+  function cancelAllChanges() {
+    if (saving) {
+      return;
+    }
+
+    setDrafts(
+      Object.fromEntries(
+        users.map((user) => [
+          user.id,
+          { role: user.role, doctorId: user.doctorId },
+        ])
+      )
+    );
+    setShowSaveConfirmation(false);
   }
 
   return (
@@ -104,11 +126,7 @@ function UsersPage() {
 
           <tbody>
             {users.length === 0 ? (
-                <tr>
-                    <td colSpan={5} className="empty-state">
-                        No users found.
-                    </td>
-                </tr>
+                <EmptyState message="No users found." colSpan={5} />
             ) : (
             users.map((user) => (
               <tr key={user.id}>
@@ -189,21 +207,55 @@ function UsersPage() {
       </div>
 
       <div className="user-access-actions">
-        <span className="muted-text">
-          {changedUsers.length === 0
-            ? "No unsaved changes"
-            : `${changedUsers.length} unsaved ${
-                changedUsers.length === 1 ? "change" : "changes"
-              }`}
-        </span>
-        <button
-          type="button"
-          disabled={changedUsers.length === 0 || saving}
-          onClick={saveAllChanges}
-        >
-          {saving ? "Saving..." : "Save Changes"}
-        </button>
+        <div className="standard-form-actions">
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={!hasChanges || saving}
+            onClick={cancelAllChanges}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={!hasChanges || saving}
+            onClick={() => setShowSaveConfirmation(true)}
+          >
+            Save Changes
+          </button>
+        </div>
       </div>
+
+      {showSaveConfirmation && hasChanges && (
+        <Modal
+          titleId="save-user-access-changes-title"
+          title="Save changes?"
+          onClose={() => {
+            if (!saving) {
+              setShowSaveConfirmation(false);
+            }
+          }}
+        >
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void saveAllChanges();
+            }}
+          >
+            <p>
+              You have {changedUsers.length} pending{" "}
+              {changedUsers.length === 1 ? "change" : "changes"}.
+            </p>
+
+            <FormActions
+              saving={saving}
+              saveDisabled={!hasChanges || saving}
+              onCancel={() => setShowSaveConfirmation(false)}
+              saveText="Save"
+            />
+          </form>
+        </Modal>
+      )}
     </section>
   );
 }

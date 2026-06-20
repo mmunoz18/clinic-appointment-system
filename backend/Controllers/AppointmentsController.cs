@@ -108,6 +108,8 @@ public class AppointmentsController : ControllerBase
     {
         try
         {
+        appointment.Status = "Scheduled";
+
         var validationError = await ValidateAppointmentAsync(appointment, validateFutureDate: true);
         if (validationError != null)
         {
@@ -147,10 +149,21 @@ public class AppointmentsController : ControllerBase
                 return NotFound();
             }
 
+            if (existingAppointment.Status == "Completed")
+            {
+                return BadRequest("Completed appointments cannot be edited.");
+            }
+
             var appointmentDetailsChanged =
                 appointment.DoctorId != existingAppointment.DoctorId ||
                 appointment.PatientId != existingAppointment.PatientId ||
                 appointment.AppointmentDate != existingAppointment.AppointmentDate;
+
+            if (existingAppointment.AppointmentDate < DateTime.Now &&
+                appointmentDetailsChanged)
+            {
+                return BadRequest("Past appointment details cannot be changed.");
+            }
 
             if (User.IsInRole("Doctor"))
             {
@@ -218,6 +231,11 @@ public class AppointmentsController : ControllerBase
             if (appointment == null)
             {
                 return NotFound();
+            }
+
+            if (appointment.Status == "Completed")
+            {
+                return BadRequest("Completed appointments cannot be deleted.");
             }
 
             _context.Appointments.Remove(appointment);
@@ -401,10 +419,9 @@ public class AppointmentsController : ControllerBase
 
     private string? ValidateAppointmentCanBeEdited(Appointment existingAppointment, Appointment updatedAppointment)
     {
-        if (existingAppointment.Status == "Completed" ||
-            existingAppointment.Status == "Cancelled")
+        if (existingAppointment.Status == "Completed")
         {
-            return "Completed or cancelled appointments cannot be updated.";
+            return "Completed appointments cannot be edited.";
         }
 
         if (existingAppointment.AppointmentDate < DateTime.Now &&

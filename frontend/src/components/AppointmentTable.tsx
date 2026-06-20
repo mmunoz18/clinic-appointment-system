@@ -1,4 +1,6 @@
 import type { Appointment } from "../api/clinicApi";
+import AppointmentStatusBadge from "./AppointmentStatusBadge";
+import EmptyState from "./EmptyState";
 
 type AppointmentTableProps = {
   appointments: Appointment[];
@@ -23,11 +25,10 @@ function AppointmentTable({
       </thead>
       <tbody>
         {appointments.length === 0 ? (
-          <tr>
-            <td colSpan={showDoctor ? 4 : 3} className="empty-state">
-              {emptyMessage}
-            </td>
-          </tr>
+          <EmptyState
+            message={emptyMessage}
+            colSpan={showDoctor ? 4 : 3}
+          />
         ) : (
           appointments.map((appointment) => (
             <tr key={appointment.id}>
@@ -40,9 +41,7 @@ function AppointmentTable({
                 })}
               </td>
               <td>
-                <span className={`status status-${appointment.status.toLowerCase()}`}>
-                  {appointment.status}
-                </span>
+                <AppointmentStatusBadge status={appointment.status} />
               </td>
             </tr>
           ))

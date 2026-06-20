@@ -18,6 +18,7 @@ import StatusBadge from "../components/StatusBadge";
 
 function PatientsPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [cedula, setCedula] = useState("");
@@ -25,6 +26,10 @@ function PatientsPage() {
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showValidation, setShowValidation] = useState(false);
+  const [serverErrors, setServerErrors] = useState<
+    Partial<Record<"name" | "email" | "cedula", string>>
+  >({});
   const [patientToDeactivate, setPatientToDeactivate] = useState<Patient | null>(null);
 
   const role = localStorage.getItem("role");
@@ -33,6 +38,21 @@ function PatientsPage() {
   const canDeletePatients = role === "Admin";
   const canViewNotes = role === "Admin";
   const showPatientActions = canEditPatients || canDeletePatients;
+  const nameError =
+    showValidation && name.trim() === "" ? "Name is required." : "";
+  const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const emailError =
+    showValidation && email.trim() === ""
+      ? "Email is required."
+      : email.trim() !== "" && !emailIsValid
+        ? "Enter a valid email address."
+        : "";
+  const cedulaError =
+    showValidation && cedula.trim() === ""
+      ? "Cedula is required."
+      : cedula.trim() !== "" && cedula.trim().length !== 9
+        ? "Cedula must be 9 characters long."
+        : "";
   const requiredFieldsComplete =
     name.trim() !== "" &&
     email.trim() !== "" &&
@@ -45,16 +65,22 @@ function PatientsPage() {
     phoneNumber.trim() !== (editingPatient.phoneNumber ?? "");
   const saveDisabled =
     !requiredFieldsComplete ||
+    !emailIsValid ||
+    cedula.trim().length !== 9 ||
     !patientChanged ||
     saving;
 
   const loadPatients = useCallback(async () => {
+    setLoading(true);
+
     try {
       const data = await getPatients(role === "Admin");
       setPatients(data);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error loading patients";
       toast.error(message);
+    } finally {
+      setLoading(false);
     }
   }, [role]);
 
@@ -68,6 +94,8 @@ function PatientsPage() {
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    setShowValidation(true);
+    setServerErrors({});
 
     if (saveDisabled) {
       return;
@@ -100,6 +128,16 @@ function PatientsPage() {
       await loadPatients();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error saving patient";
+      const normalizedMessage = message.toLowerCase();
+
+      if (normalizedMessage.includes("cedula")) {
+        setServerErrors({ cedula: message });
+      } else if (normalizedMessage.includes("email")) {
+        setServerErrors({ email: message });
+      } else if (normalizedMessage.includes("name")) {
+        setServerErrors({ name: message });
+      }
+
       toast.error(message);
     } finally {
       setSaving(false);
@@ -126,6 +164,8 @@ function PatientsPage() {
     setEmail("");
     setCedula("");
     setPhoneNumber("");
+    setShowValidation(false);
+    setServerErrors({});
     setIsFormOpen(false);
   }
 
@@ -192,9 +232,22 @@ function PatientsPage() {
                 <input
                   type="text"
                   value={name}
-                  onChange={(event) => setName(event.target.value)}
+                  onChange={(event) => {
+                    setName(event.target.value);
+                    setServerErrors((current) => ({
+                      ...current,
+                      name: undefined,
+                    }));
+                  }}
+                  onBlur={() => setShowValidation(true)}
+                  aria-invalid={Boolean(nameError || serverErrors.name)}
                   required
                 />
+                {(nameError || serverErrors.name) && (
+                  <span className="field-error">
+                    {nameError || serverErrors.name}
+                  </span>
+                )}
               </label>
 
               <label>
@@ -202,9 +255,22 @@ function PatientsPage() {
                 <input
                   type="email"
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    setServerErrors((current) => ({
+                      ...current,
+                      email: undefined,
+                    }));
+                  }}
+                  onBlur={() => setShowValidation(true)}
+                  aria-invalid={Boolean(emailError || serverErrors.email)}
                   required
                 />
+                {(emailError || serverErrors.email) && (
+                  <span className="field-error">
+                    {emailError || serverErrors.email}
+                  </span>
+                )}
               </label>
 
               <label>
@@ -212,9 +278,22 @@ function PatientsPage() {
                 <input
                   type="text"
                   value={cedula}
-                  onChange={(event) => setCedula(event.target.value)}
+                  onChange={(event) => {
+                    setCedula(event.target.value);
+                    setServerErrors((current) => ({
+                      ...current,
+                      cedula: undefined,
+                    }));
+                  }}
+                  onBlur={() => setShowValidation(true)}
+                  aria-invalid={Boolean(cedulaError || serverErrors.cedula)}
                   required
                 />
+                {(cedulaError || serverErrors.cedula) && (
+                  <span className="field-error">
+                    {cedulaError || serverErrors.cedula}
+                  </span>
+                )}
               </label>
 
               <label>
@@ -236,6 +315,9 @@ function PatientsPage() {
           </Modal>
         )}
 
+        {loading ? (
+          <p className="loading-state">Loading patients...</p>
+        ) : (
         <div className="table-card">
         <table>
             <thead>
@@ -280,7 +362,12 @@ function PatientsPage() {
                 {showPatientActions && (
                 <td>
                   {canEditPatients && (
-                    <button onClick={() => handleEditPatient(patient)}>Edit</button>
+                    <button
+                      disabled={!patient.isActive}
+                      onClick={() => handleEditPatient(patient)}
+                    >
+                      Edit
+                    </button>
                   )}
                   {canDeletePatients && (
                     patient.isActive ? (
@@ -303,6 +390,7 @@ function PatientsPage() {
           </tbody>
         </table>
         </div>
+        )}
         
         {patientToDeactivate && (
           <ConfirmModal

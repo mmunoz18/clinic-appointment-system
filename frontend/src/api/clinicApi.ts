@@ -101,6 +101,14 @@ export type DoctorAvailabilityRequest = {
   endTime: string;
 };
 
+export type DoctorAvailabilitySummary = {
+  id: number;
+  name: string;
+  specialty: string;
+  isActive: boolean;
+  availability: DoctorAvailability[];
+};
+
 export type PatientNote = {
   id: number;
   patientId: number;
@@ -339,6 +347,20 @@ export async function getDoctorAvailability(
   );
 
   return handleResponse(response, "Failed to fetch doctor availability");
+}
+
+export async function getDoctorAvailabilitySummary(): Promise<
+  DoctorAvailabilitySummary[]
+> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/doctor-availability/summary`,
+    { headers: getAuthHeaders() }
+  );
+
+  return handleResponse(
+    response,
+    "Failed to fetch doctor availability summary"
+  );
 }
 
 export async function getMyDoctorProfile(): Promise<Doctor> {
