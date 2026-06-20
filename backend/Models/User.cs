@@ -12,6 +12,8 @@ public class User
     
     public string Role { get; set; } = "Receptionist";
 
+    public bool IsActive { get; set; } = true;
+
     public int? DoctorId { get; set; }
 
     public Doctor? Doctor { get; set; }

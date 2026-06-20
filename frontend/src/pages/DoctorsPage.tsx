@@ -29,6 +29,8 @@ function DoctorsPage() {
     Partial<Record<"name" | "specialty" | "cedula", string>>
   >({});
   const [doctorToDeactivate, setDoctorToDeactivate] = useState<Doctor | null>(null);
+  const [doctorToActivate, setDoctorToActivate] = useState<Doctor | null>(null);
+  const [changingStatus, setChangingStatus] = useState(false);
 
   const role = localStorage.getItem("role");
   const canManageDoctors = role === "Admin";
@@ -95,11 +97,10 @@ function DoctorsPage() {
     try {
       if (editingDoctor) {
         await updateDoctor({
-          id: editingDoctor.id,
+          ...editingDoctor,
           name: name.trim(),
           specialty: specialty.trim(),
           cedula: cedula.trim(),
-          isActive: editingDoctor.isActive,
         });
         toast.success("Doctor updated successfully");
       } else {
@@ -155,32 +156,65 @@ function DoctorsPage() {
   }
 
   async function confirmDeactivateDoctor() {
-    if (!doctorToDeactivate) {
+    if (!doctorToDeactivate || changingStatus) {
       return;
     }
 
+    setChangingStatus(true);
+
     try {
       await deactivateDoctor(doctorToDeactivate.id);
-      toast.success("Doctor deactivated successfully");
+      toast.success(
+        doctorToDeactivate.hasLinkedUser
+          ? "Doctor and linked user account deactivated successfully"
+          : "Doctor deactivated successfully"
+      );
       setDoctorToDeactivate(null);
       clearDoctorForm();
       await loadDoctors();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to deactivate doctor";
       toast.error(message);
+    } finally {
+      setChangingStatus(false);
     }
   }
 
-  async function handleActivateDoctor(doctor: Doctor) {
+  async function handleActivateDoctor(
+    doctor: Doctor,
+    activateLinkedUser = false
+  ) {
+    if (changingStatus) {
+      return;
+    }
+
+    setChangingStatus(true);
+
     try {
-      await activateDoctor(doctor.id);
-      toast.success("Doctor activated successfully");
+      await activateDoctor(doctor.id, activateLinkedUser);
+      toast.success(
+        activateLinkedUser
+          ? "Doctor and linked user account activated successfully"
+          : "Doctor activated successfully"
+      );
+      setDoctorToActivate(null);
       clearDoctorForm();
       await loadDoctors();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to activate doctor";
       toast.error(message);
+    } finally {
+      setChangingStatus(false);
     }
+  }
+
+  function openActivateDoctor(doctor: Doctor) {
+    if (doctor.hasLinkedUser) {
+      setDoctorToActivate(doctor);
+      return;
+    }
+
+    void handleActivateDoctor(doctor);
   }
 
   return (
@@ -334,7 +368,8 @@ function DoctorsPage() {
                     ) : (
                       <button
                         className="activate-button"
-                        onClick={() => handleActivateDoctor(doctor)}
+                        disabled={changingStatus}
+                        onClick={() => openActivateDoctor(doctor)}
                       >
                         Activate
                       </button>
@@ -357,12 +392,69 @@ function DoctorsPage() {
               <strong>{doctorToDeactivate.name}</strong>?
             </>
           }
-          warning="Inactive doctors cannot be assigned to new appointments."
-          confirmText="Deactivate"
+          warning={
+            doctorToDeactivate.hasLinkedUser
+              ? "This doctor has a linked user account. Deactivating the doctor will also disable the login account."
+              : "Inactive doctors cannot be assigned to new appointments."
+          }
+          confirmText={changingStatus ? "Deactivating..." : "Deactivate"}
           reversible
-          onCancel={() => setDoctorToDeactivate(null)}
-          onConfirm={confirmDeactivateDoctor}
+          onCancel={() => {
+            if (!changingStatus) {
+              setDoctorToDeactivate(null);
+            }
+          }}
+          onConfirm={() => void confirmDeactivateDoctor()}
         />
+      )}
+
+      {doctorToActivate && (
+        <Modal
+          titleId="activate-doctor-modal-title"
+          title="Activate doctor?"
+          onClose={() => {
+            if (!changingStatus) {
+              setDoctorToActivate(null);
+            }
+          }}
+        >
+          <p>
+            <strong>{doctorToActivate.name}</strong> has a linked login
+            account. Choose whether to activate only the doctor profile or
+            activate both the doctor profile and login account.
+          </p>
+
+          <div className="modal-actions">
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={changingStatus}
+              onClick={() => setDoctorToActivate(null)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={changingStatus}
+              onClick={() =>
+                void handleActivateDoctor(doctorToActivate, false)
+              }
+            >
+              Activate Doctor Only
+            </button>
+            <button
+              type="button"
+              className="activate-button"
+              disabled={changingStatus}
+              onClick={() =>
+                void handleActivateDoctor(doctorToActivate, true)
+              }
+            >
+              {changingStatus ? "Activating..." : "Activate Both"}
+            </button>
+          </div>
+        </Modal>
       )}
     </section>
   );

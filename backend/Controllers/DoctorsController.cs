@@ -20,7 +20,7 @@ public class DoctorsController : ControllerBase
 
     [HttpGet]
     [Authorize(Policy = "AllRoles")]
-    public async Task<ActionResult<IEnumerable<Doctor>>> GetDoctors(
+    public async Task<IActionResult> GetDoctors(
         [FromQuery] bool includeInactive = false)
     {
         var query = _context.Doctors.AsNoTracking();
@@ -30,16 +30,42 @@ public class DoctorsController : ControllerBase
             query = query.Where(doctor => doctor.IsActive);
         }
 
-        var doctors = await query.ToListAsync();
+        var doctors = await query
+            .Select(doctor => new
+            {
+                doctor.Id,
+                doctor.Name,
+                doctor.Specialty,
+                doctor.Cedula,
+                doctor.IsActive,
+                HasLinkedUser = doctor.User != null,
+                LinkedUserIsActive = doctor.User != null && doctor.User.IsActive
+            })
+            .ToListAsync();
 
         return Ok(doctors);
     }
 
     [HttpGet("{id}")]
     [Authorize(Policy = "AllRoles")]
-    public async Task<ActionResult<Doctor>> GetDoctor(int id)
+    public async Task<IActionResult> GetDoctor(int id)
     {
-        var doctor = await _context.Doctors.FindAsync(id);
+        var doctor = await _context.Doctors
+            .AsNoTracking()
+            .Where(existingDoctor => existingDoctor.Id == id)
+            .Select(existingDoctor => new
+            {
+                existingDoctor.Id,
+                existingDoctor.Name,
+                existingDoctor.Specialty,
+                existingDoctor.Cedula,
+                existingDoctor.IsActive,
+                HasLinkedUser = existingDoctor.User != null,
+                LinkedUserIsActive =
+                    existingDoctor.User != null &&
+                    existingDoctor.User.IsActive
+            })
+            .SingleOrDefaultAsync();
 
         if (doctor == null)
         {
@@ -128,7 +154,9 @@ public class DoctorsController : ControllerBase
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> DeactivateDoctor(int id)
     {
-        var doctor = await _context.Doctors.FindAsync(id);
+        var doctor = await _context.Doctors
+            .Include(existingDoctor => existingDoctor.User)
+            .SingleOrDefaultAsync(existingDoctor => existingDoctor.Id == id);
 
         if (doctor == null)
         {
@@ -146,6 +174,12 @@ public class DoctorsController : ControllerBase
         }
 
         doctor.IsActive = false;
+
+        if (doctor.User != null)
+        {
+            doctor.User.IsActive = false;
+        }
+
         await _context.SaveChangesAsync();
 
         return NoContent();
@@ -153,9 +187,13 @@ public class DoctorsController : ControllerBase
 
     [HttpPut("{id}/activate")]
     [Authorize(Policy = "AdminOnly")]
-    public async Task<IActionResult> ActivateDoctor(int id)
+    public async Task<IActionResult> ActivateDoctor(
+        int id,
+        [FromQuery] bool activateLinkedUser = false)
     {
-        var doctor = await _context.Doctors.FindAsync(id);
+        var doctor = await _context.Doctors
+            .Include(existingDoctor => existingDoctor.User)
+            .SingleOrDefaultAsync(existingDoctor => existingDoctor.Id == id);
 
         if (doctor == null)
         {
@@ -163,6 +201,12 @@ public class DoctorsController : ControllerBase
         }
 
         doctor.IsActive = true;
+
+        if (activateLinkedUser && doctor.User != null)
+        {
+            doctor.User.IsActive = true;
+        }
+
         await _context.SaveChangesAsync();
 
         return NoContent();

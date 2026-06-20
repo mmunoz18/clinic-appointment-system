@@ -200,11 +200,11 @@ tbody tr:hover {
   color: #4b5563;
 }
 
-td button.activate-button {
+.activate-button {
   background: #16a34a;
 }
 
-td button.activate-button:hover {
+.activate-button:hover:not(:disabled) {
   background: #15803d;
 }
 

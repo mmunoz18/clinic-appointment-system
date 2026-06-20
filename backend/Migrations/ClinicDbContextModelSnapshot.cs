@@ -179,6 +179,11 @@ namespace backend.Migrations
                     b.Property<int?>("DoctorId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("TEXT");

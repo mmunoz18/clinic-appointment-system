@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import {
+  activateUser,
+  deactivateUser,
   getDoctors,
   getUsers,
   updateUserRole,
@@ -10,6 +12,8 @@ import { toast } from "react-toastify";
 import FormActions from "../components/FormActions";
 import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
+import ConfirmModal from "../components/ConfirmModal";
+import StatusBadge from "../components/StatusBadge";
 
 const roles = ["Admin", "Receptionist", "Doctor"];
 
@@ -21,6 +25,10 @@ function UsersPage() {
   >({});
   const [saving, setSaving] = useState(false);
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+  const [userToDeactivate, setUserToDeactivate] = useState<User | null>(null);
+  const [accountActionUserId, setAccountActionUserId] = useState<number | null>(
+    null
+  );
 
   const changedUsers = users.filter((user) => {
     const draft = drafts[user.id];
@@ -36,7 +44,7 @@ function UsersPage() {
     try {
       const [usersData, doctorsData] = await Promise.all([
         getUsers(),
-        getDoctors(),
+        getDoctors(true),
       ]);
 
       setUsers(usersData);
@@ -105,6 +113,66 @@ function UsersPage() {
     setShowSaveConfirmation(false);
   }
 
+  async function handleDeactivateUser() {
+    if (!userToDeactivate || accountActionUserId != null) {
+      return;
+    }
+
+    setAccountActionUserId(userToDeactivate.id);
+
+    try {
+      await deactivateUser(userToDeactivate.id);
+      setUsers((current) =>
+        current.map((user) =>
+          user.id === userToDeactivate.id
+            ? { ...user, isActive: false }
+            : user
+        )
+      );
+      setDrafts((current) => ({
+        ...current,
+        [userToDeactivate.id]: {
+          role: userToDeactivate.role,
+          doctorId: userToDeactivate.doctorId,
+        },
+      }));
+      toast.success("User account deactivated successfully");
+      setUserToDeactivate(null);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Error deactivating user";
+      toast.error(message);
+    } finally {
+      setAccountActionUserId(null);
+    }
+  }
+
+  async function handleActivateUser(user: User) {
+    if (accountActionUserId != null) {
+      return;
+    }
+
+    setAccountActionUserId(user.id);
+
+    try {
+      await activateUser(user.id);
+      setUsers((current) =>
+        current.map((currentUser) =>
+          currentUser.id === user.id
+            ? { ...currentUser, isActive: true }
+            : currentUser
+        )
+      );
+      toast.success("User account activated successfully");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Error activating user";
+      toast.error(message);
+    } finally {
+      setAccountActionUserId(null);
+    }
+  }
+
   return (
     <section>
       <div className="page-header">
@@ -120,13 +188,15 @@ function UsersPage() {
               <th>Email</th>
               <th>Role</th>
               <th>Doctor Profile</th>
-              <th>Status</th>
+              <th>Profile Status</th>
+              <th>Account Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
 
           <tbody>
             {users.length === 0 ? (
-                <EmptyState message="No users found." colSpan={5} />
+                <EmptyState message="No users found." colSpan={7} />
             ) : (
             users.map((user) => (
               <tr key={user.id}>
@@ -135,6 +205,7 @@ function UsersPage() {
                 <td>
                   <select
                     value={drafts[user.id]?.role ?? user.role}
+                    disabled={saving}
                     onChange={(event) => {
                       const role = event.target.value;
                       setDrafts((current) => ({
@@ -160,6 +231,7 @@ function UsersPage() {
                   {(drafts[user.id]?.role ?? user.role) === "Doctor" ? (
                     <select
                       value={drafts[user.id]?.doctorId ?? ""}
+                      disabled={saving}
                       onChange={(event) =>
                         setDrafts((current) => ({
                           ...current,
@@ -174,8 +246,16 @@ function UsersPage() {
                     >
                       <option value="">Select doctor</option>
                       {doctors.map((doctor) => (
-                        <option key={doctor.id} value={doctor.id}>
+                        <option
+                          key={doctor.id}
+                          value={doctor.id}
+                          disabled={
+                            !doctor.isActive &&
+                            doctor.id !== drafts[user.id]?.doctorId
+                          }
+                        >
                           {doctor.name} — {doctor.specialty}
+                          {!doctor.isActive ? " (Inactive)" : ""}
                         </option>
                       ))}
                     </select>
@@ -198,6 +278,36 @@ function UsersPage() {
                     <span className="entity-status entity-status-inactive">
                       Not required
                     </span>
+                  )}
+                </td>
+                <td>
+                  <StatusBadge active={user.isActive} />
+                </td>
+                <td>
+                  {user.isActive ? (
+                    <button
+                      type="button"
+                      className="danger-button"
+                      disabled={
+                        saving || accountActionUserId === user.id
+                      }
+                      onClick={() => setUserToDeactivate(user)}
+                    >
+                      Deactivate
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="activate-button"
+                      disabled={
+                        saving || accountActionUserId === user.id
+                      }
+                      onClick={() => void handleActivateUser(user)}
+                    >
+                      {accountActionUserId === user.id
+                        ? "Activating..."
+                        : "Activate"}
+                    </button>
                   )}
                 </td>
               </tr>
@@ -255,6 +365,31 @@ function UsersPage() {
             />
           </form>
         </Modal>
+      )}
+
+      {userToDeactivate && (
+        <ConfirmModal
+          title="Deactivate user?"
+          message={
+            <>
+              Are you sure you want to deactivate{" "}
+              <strong>{userToDeactivate.name}</strong>?
+            </>
+          }
+          warning="The user will be signed out and will not be able to log in until their account is activated again."
+          confirmText={
+            accountActionUserId === userToDeactivate.id
+              ? "Deactivating..."
+              : "Deactivate"
+          }
+          reversible
+          onConfirm={() => void handleDeactivateUser()}
+          onCancel={() => {
+            if (accountActionUserId == null) {
+              setUserToDeactivate(null);
+            }
+          }}
+        />
       )}
     </section>
   );

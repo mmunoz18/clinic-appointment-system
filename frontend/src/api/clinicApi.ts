@@ -6,6 +6,8 @@ export type Doctor = {
   specialty: string;
   cedula: string;
   isActive: boolean;
+  hasLinkedUser: boolean;
+  linkedUserIsActive: boolean;
 }
 
 export type Patient = {
@@ -65,6 +67,7 @@ export type User = {
   name: string;
   email: string;
   role: string;
+  isActive: boolean;
   doctorId: number | null;
   doctorName: string | null;
 };
@@ -196,11 +199,17 @@ export async function deactivateDoctor(id: number) {
   return handleResponse(response, "Failed to deactivate doctor");
 }
 
-export async function activateDoctor(id: number) {
-  const response = await fetch(`${API_BASE_URL}/api/doctors/${id}/activate`, {
-    method: "PUT",
-    headers: getAuthHeaders(),
-  });
+export async function activateDoctor(
+  id: number,
+  activateLinkedUser = false
+) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/doctors/${id}/activate?activateLinkedUser=${activateLinkedUser}`,
+    {
+      method: "PUT",
+      headers: getAuthHeaders(),
+    }
+  );
 
   return handleResponse(response, "Failed to activate doctor");
 }
@@ -279,7 +288,7 @@ export async function login(email: string, password: string): Promise<AuthRespon
     body: JSON.stringify({ email, password }),
   });
 
-  return handleResponse(response, "Failed to login");
+  return handleResponse(response, "Failed to login", false);
 }
 
 export async function register(user: RegisterRequest): Promise<void> {
@@ -312,6 +321,24 @@ export async function updateUserRole(
   });
 
   return handleResponse(response, "Failed to update user role");
+}
+
+export async function deactivateUser(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/users/${id}/deactivate`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse(response, "Failed to deactivate user");
+}
+
+export async function activateUser(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/users/${id}/activate`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse(response, "Failed to activate user");
 }
 
 export async function getDoctorDashboard(): Promise<DoctorDashboard> {
@@ -443,8 +470,14 @@ export async function updatePatientNote(
   return handleResponse(response, "Failed to update patient note");
 }
 
-async function handleResponse(response: Response, fallbackMessage: string) {
-  handleUnauthorized(response);
+async function handleResponse(
+  response: Response,
+  fallbackMessage: string,
+  redirectOnUnauthorized = true
+) {
+  if (redirectOnUnauthorized) {
+    handleUnauthorized(response);
+  }
 
   if (!response.ok) {
     const errorMessage = await response.text();

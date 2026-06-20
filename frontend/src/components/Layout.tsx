@@ -25,6 +25,9 @@ function Layout() {
           {(isAdmin || isReceptionist) && (
             <NavLink to="/doctors">Doctors</NavLink>
           )}
+          {(isAdmin || isReceptionist) && (
+            <NavLink to="/doctor-availability">Doctor Availability</NavLink>
+          )}
 
           {(isAdmin || isReceptionist) && (
             <NavLink to="/patients">Patients</NavLink>
@@ -38,9 +41,6 @@ function Layout() {
           {isDoctor && <NavLink to="/my-availability">My Availability</NavLink>}
           {isAdmin && (
             <NavLink to="/users">User Access</NavLink>
-          )}
-          {(isAdmin || isReceptionist) && (
-            <NavLink to="/doctor-availability">Doctor Availability</NavLink>
           )}
         </nav>
         <button className="logout-button" onClick={handleLogout}>

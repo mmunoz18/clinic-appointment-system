@@ -98,6 +98,11 @@ public class AuthController : ControllerBase
                 return Unauthorized("Invalid email or password.");
             }
 
+            if (!user.IsActive)
+            {
+                return Unauthorized("User account is inactive.");
+            }
+
             var token = GenerateJwtToken(user);
 
             return Ok(new AuthResponse

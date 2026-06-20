@@ -32,6 +32,10 @@ public class ClinicDbContext : DbContext
             .Property(patient => patient.IsActive)
             .HasDefaultValue(true);
 
+        modelBuilder.Entity<User>()
+            .Property(user => user.IsActive)
+            .HasDefaultValue(true);
+
         modelBuilder.Entity<DoctorAvailability>()
             .Property(availability => availability.IsActive)
             .HasDefaultValue(true);
