@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using backend.DTOs;
+using backend.Services;
 
 namespace backend.Controllers;
 
@@ -13,10 +14,14 @@ namespace backend.Controllers;
 public class DoctorsController : ControllerBase
 {
     private readonly ClinicDbContext _context;
+    private readonly IAuditService _auditService;
 
-    public DoctorsController(ClinicDbContext context)
+    public DoctorsController(
+        ClinicDbContext context,
+        IAuditService auditService)
     {
         _context = context;
+        _auditService = auditService;
     }
 
     [HttpGet]
@@ -152,6 +157,12 @@ public class DoctorsController : ControllerBase
 
             _context.Doctors.Add(doctor);
             await _context.SaveChangesAsync();
+            await _auditService.LogAsync(
+                "Doctor",
+                doctor.Id,
+                "Created",
+                $"Created doctor {doctor.Name}.",
+                entityName: doctor.Name);
 
             return CreatedAtAction(
                 nameof(GetDoctor),
@@ -194,6 +205,12 @@ public class DoctorsController : ControllerBase
             existingDoctor.Cedula = doctor.Cedula.Trim();
 
             await _context.SaveChangesAsync();
+            await _auditService.LogAsync(
+                "Doctor",
+                existingDoctor.Id,
+                "Updated",
+                $"Updated doctor {existingDoctor.Name}.",
+                entityName: existingDoctor.Name);
 
             return NoContent();
         }
@@ -234,6 +251,14 @@ public class DoctorsController : ControllerBase
         }
 
         await _context.SaveChangesAsync();
+        await _auditService.LogAsync(
+            "Doctor",
+            doctor.Id,
+            "Deactivated",
+            doctor.User != null
+                ? $"Deactivated doctor {doctor.Name} and linked user account."
+                : $"Deactivated doctor {doctor.Name}.",
+            entityName: doctor.Name);
 
         return NoContent();
     }
@@ -261,6 +286,14 @@ public class DoctorsController : ControllerBase
         }
 
         await _context.SaveChangesAsync();
+        await _auditService.LogAsync(
+            "Doctor",
+            doctor.Id,
+            "Activated",
+            activateLinkedUser && doctor.User != null
+                ? $"Activated doctor {doctor.Name} and linked user account."
+                : $"Activated doctor {doctor.Name}.",
+            entityName: doctor.Name);
 
         return NoContent();
     }

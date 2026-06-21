@@ -13,6 +13,7 @@ import DoctorAppointmentsPage from "./pages/DoctorAppointmentsPage";
 import DoctorAvailabilityPage from "./pages/DoctorAvailabilityPage";
 import PatientDetailsPage from "./pages/PatientDetailsPage";
 import ReminderSettingsPage from "./pages/ReminderSettingsPage";
+import AuditLogPage from "./pages/AuditLogPage";
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
           <Route path="patients" element={<PatientsPage />} />
           <Route path="appointments" element={<AppointmentsPage />} />
           <Route path="reminder-settings" element={<ReminderSettingsPage />} />
+          <Route path="audit-log" element={<AuditLogPage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="my-patients" element={<DoctorPatientsPage />} />
           <Route path="my-appointments" element={<DoctorAppointmentsPage />} />

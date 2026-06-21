@@ -153,6 +153,28 @@ export type ReminderSettings = {
   nextCheckAt: string | null;
 };
 
+export type AuditLog = {
+  id: number;
+  entityType: string;
+  entityId: number;
+  entityName: string | null;
+  action: string;
+  details: string | null;
+  userId: number | null;
+  userName: string;
+  createdAt: string;
+};
+
+export type AuditLogFilters = {
+  entity?: string;
+  action?: string;
+  user?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  pageSize?: number;
+};
+
 function getAuthHeaders(): HeadersInit {
   const token = localStorage.getItem("token");
 
@@ -409,6 +431,28 @@ export async function updateReminderSettings(
   });
 
   return handleResponse(response, "Failed to update reminder settings");
+}
+
+export async function getAuditLogs(
+  filters: AuditLogFilters
+): Promise<PagedResult<AuditLog>> {
+  const params = new URLSearchParams({
+    page: String(filters.page ?? 1),
+    pageSize: String(filters.pageSize ?? 20),
+  });
+
+  if (filters.entity) params.set("entity", filters.entity);
+  if (filters.action) params.set("action", filters.action);
+  if (filters.user) params.set("user", filters.user);
+  if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
+  if (filters.dateTo) params.set("dateTo", filters.dateTo);
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/audit-logs?${params}`,
+    { headers: getAuthHeaders() }
+  );
+
+  return handleResponse(response, "Failed to fetch audit log");
 }
 
 export async function login(email: string, password: string): Promise<AuthResponse> {

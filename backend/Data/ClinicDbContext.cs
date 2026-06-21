@@ -16,6 +16,8 @@ public class ClinicDbContext : DbContext
 
     public DbSet<Appointment> Appointments { get; set; }
 
+    public DbSet<AuditLog> AuditLogs { get; set; }
+
     public DbSet<DoctorAvailability> DoctorAvailabilities { get; set; }
 
     public DbSet<PatientNote> PatientNotes { get; set; }
@@ -73,6 +75,12 @@ public class ClinicDbContext : DbContext
 
         modelBuilder.Entity<PatientNote>()
             .HasIndex(note => new { note.PatientId, note.CreatedAt });
+
+        modelBuilder.Entity<AuditLog>()
+            .HasIndex(log => log.CreatedAt);
+
+        modelBuilder.Entity<AuditLog>()
+            .HasIndex(log => new { log.EntityType, log.Action });
 
         modelBuilder.Entity<User>()
             .HasOne(user => user.Doctor)

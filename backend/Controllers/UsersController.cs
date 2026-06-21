@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using backend.Services;
 
 namespace backend.Controllers;
 
@@ -12,10 +13,14 @@ namespace backend.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly ClinicDbContext _context;
+    private readonly IAuditService _auditService;
 
-    public UsersController(ClinicDbContext context)
+    public UsersController(
+        ClinicDbContext context,
+        IAuditService auditService)
     {
         _context = context;
+        _auditService = auditService;
     }
 
     [HttpGet]
@@ -93,10 +98,18 @@ public class UsersController : ControllerBase
             }
         }
 
+        var previousRole = user.Role;
+        var previousDoctorId = user.DoctorId;
         user.Role = request.Role;
         user.DoctorId = request.Role == "Doctor" ? request.DoctorId : null;
 
         await _context.SaveChangesAsync();
+        await _auditService.LogAsync(
+            "User",
+            user.Id,
+            "RoleChanged",
+            $"Role: {previousRole} → {user.Role}. Doctor profile: {previousDoctorId?.ToString() ?? "none"} → {user.DoctorId?.ToString() ?? "none"}.",
+            entityName: user.Name);
 
         return NoContent();
     }
@@ -142,6 +155,12 @@ public class UsersController : ControllerBase
 
         user.IsActive = false;
         await _context.SaveChangesAsync();
+        await _auditService.LogAsync(
+            "User",
+            user.Id,
+            "Deactivated",
+            $"Deactivated user {user.Name}.",
+            entityName: user.Name);
 
         return NoContent();
     }
@@ -179,6 +198,12 @@ public class UsersController : ControllerBase
 
         user.IsActive = true;
         await _context.SaveChangesAsync();
+        await _auditService.LogAsync(
+            "User",
+            user.Id,
+            "Activated",
+            $"Activated user {user.Name}.",
+            entityName: user.Name);
 
         return NoContent();
     }

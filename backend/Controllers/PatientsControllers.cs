@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using backend.DTOs;
+using backend.Services;
 
 namespace backend.Controllers;
 
@@ -14,10 +15,14 @@ namespace backend.Controllers;
 public class PatientsController : ControllerBase
 {
     private readonly ClinicDbContext _context;
+    private readonly IAuditService _auditService;
 
-    public PatientsController(ClinicDbContext context)
+    public PatientsController(
+        ClinicDbContext context,
+        IAuditService auditService)
     {
         _context = context;
+        _auditService = auditService;
     }
 
     [HttpGet]
@@ -131,6 +136,12 @@ public class PatientsController : ControllerBase
 
             _context.Patients.Add(patient);
             await _context.SaveChangesAsync();
+            await _auditService.LogAsync(
+                "Patient",
+                patient.Id,
+                "Created",
+                $"Created patient {patient.Name}.",
+                entityName: patient.Name);
 
             return CreatedAtAction(
                 nameof(GetPatient),
@@ -181,6 +192,12 @@ public class PatientsController : ControllerBase
                 : patient.PhoneNumber.Trim();
 
             await _context.SaveChangesAsync();
+            await _auditService.LogAsync(
+                "Patient",
+                existingPatient.Id,
+                "Updated",
+                $"Updated patient {existingPatient.Name}.",
+                entityName: existingPatient.Name);
 
             return NoContent();
         }
@@ -203,6 +220,12 @@ public class PatientsController : ControllerBase
 
         patient.IsActive = false;
         await _context.SaveChangesAsync();
+        await _auditService.LogAsync(
+            "Patient",
+            patient.Id,
+            "Deactivated",
+            $"Deactivated patient {patient.Name}.",
+            entityName: patient.Name);
 
         return NoContent();
     }
@@ -220,6 +243,12 @@ public class PatientsController : ControllerBase
 
         patient.IsActive = true;
         await _context.SaveChangesAsync();
+        await _auditService.LogAsync(
+            "Patient",
+            patient.Id,
+            "Activated",
+            $"Activated patient {patient.Name}.",
+            entityName: patient.Name);
 
         return NoContent();
     }

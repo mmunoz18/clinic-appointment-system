@@ -16,13 +16,16 @@ public class AppointmentsController : ControllerBase
 {
     private readonly ClinicDbContext _context;
     private readonly IAppointmentReminderService _reminderService;
+    private readonly IAuditService _auditService;
 
     public AppointmentsController(
         ClinicDbContext context,
-        IAppointmentReminderService reminderService)
+        IAppointmentReminderService reminderService,
+        IAuditService auditService)
     {
         _context = context;
         _reminderService = reminderService;
+        _auditService = auditService;
     }
 
     [HttpGet]
@@ -256,6 +259,11 @@ public class AppointmentsController : ControllerBase
 
         _context.Appointments.Add(appointment);
         await _context.SaveChangesAsync();
+        await _auditService.LogAsync(
+            "Appointment",
+            appointment.Id,
+            "Created",
+            $"Created appointment for doctor #{appointment.DoctorId} and patient #{appointment.PatientId} on {appointment.AppointmentDate:O}.");
 
         return CreatedAtAction(
             nameof(GetAppointment),
@@ -326,6 +334,12 @@ public class AppointmentsController : ControllerBase
 
             appointment.ReminderLastError = null;
             await _context.SaveChangesAsync(cancellationToken);
+            await _auditService.LogAsync(
+                "Appointment",
+                appointment.Id,
+                "ReminderSent",
+                $"Manual reminder sent to {appointment.Patient?.Email}.",
+                cancellationToken: cancellationToken);
 
             return Ok(new
             {
@@ -336,6 +350,12 @@ public class AppointmentsController : ControllerBase
         {
             appointment.ReminderLastError = exception.Message;
             await _context.SaveChangesAsync(cancellationToken);
+            await _auditService.LogAsync(
+                "Appointment",
+                appointment.Id,
+                "ReminderFailed",
+                exception.Message,
+                cancellationToken: cancellationToken);
 
             return StatusCode(
                 StatusCodes.Status503ServiceUnavailable,
@@ -346,6 +366,12 @@ public class AppointmentsController : ControllerBase
             appointment.ReminderLastError =
                 "The reminder could not be sent. Please try again.";
             await _context.SaveChangesAsync(cancellationToken);
+            await _auditService.LogAsync(
+                "Appointment",
+                appointment.Id,
+                "ReminderFailed",
+                appointment.ReminderLastError,
+                cancellationToken: cancellationToken);
 
             return StatusCode(
                 StatusCodes.Status502BadGateway,
@@ -380,6 +406,7 @@ public class AppointmentsController : ControllerBase
                 appointment.DoctorId != existingAppointment.DoctorId ||
                 appointment.PatientId != existingAppointment.PatientId ||
                 appointment.AppointmentDate != existingAppointment.AppointmentDate;
+            var previousStatus = existingAppointment.Status;
 
             if (existingAppointment.AppointmentDate < DateTime.Now &&
                 appointmentDetailsChanged)
@@ -440,6 +467,21 @@ public class AppointmentsController : ControllerBase
 
             await _context.SaveChangesAsync();
 
+            var auditAction =
+                previousStatus != appointment.Status &&
+                appointment.Status == "Completed"
+                    ? "Completed"
+                    : previousStatus != appointment.Status &&
+                      appointment.Status == "Cancelled"
+                        ? "Cancelled"
+                        : "Updated";
+
+            await _auditService.LogAsync(
+                "Appointment",
+                existingAppointment.Id,
+                auditAction,
+                $"Status: {previousStatus} → {appointment.Status}. Doctor #{appointment.DoctorId}, patient #{appointment.PatientId}, date {appointment.AppointmentDate:O}.");
+
             return NoContent();
         }
         catch
@@ -468,6 +510,11 @@ public class AppointmentsController : ControllerBase
 
             _context.Appointments.Remove(appointment);
             await _context.SaveChangesAsync();
+            await _auditService.LogAsync(
+                "Appointment",
+                id,
+                "Deleted",
+                "Appointment deleted.");
 
             return NoContent();
         }

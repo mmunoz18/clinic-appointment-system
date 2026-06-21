@@ -42,6 +42,8 @@ public class AppointmentReminderBackgroundService : BackgroundService
         var context = scope.ServiceProvider.GetRequiredService<ClinicDbContext>();
         var reminderService = scope.ServiceProvider
             .GetRequiredService<IAppointmentReminderService>();
+        var auditService = scope.ServiceProvider
+            .GetRequiredService<IAuditService>();
 
         var settings = await context.ReminderSettings
             .SingleOrDefaultAsync(
@@ -107,10 +109,26 @@ public class AppointmentReminderBackgroundService : BackgroundService
 
                 appointment.ReminderLastError = null;
                 settings.LastReminderSentAt = sentAt;
+                await context.SaveChangesAsync(cancellationToken);
+                await auditService.LogAsync(
+                    "Appointment",
+                    appointment.Id,
+                    "ReminderSent",
+                    $"Automatic {GetReminderLabel(reminderType.Value)} reminder sent to {appointment.Patient?.Email}.",
+                    userName: "System",
+                    cancellationToken: cancellationToken);
             }
             catch (Exception exception)
             {
                 appointment.ReminderLastError = exception.Message;
+                await context.SaveChangesAsync(cancellationToken);
+                await auditService.LogAsync(
+                    "Appointment",
+                    appointment.Id,
+                    "ReminderFailed",
+                    $"Automatic {GetReminderLabel(reminderType.Value)} reminder failed: {exception.Message}",
+                    userName: "System",
+                    cancellationToken: cancellationToken);
                 _logger.LogWarning(
                     exception,
                     "Failed to send {ReminderType} reminder for appointment {AppointmentId}.",
@@ -118,7 +136,6 @@ public class AppointmentReminderBackgroundService : BackgroundService
                     appointment.Id);
             }
 
-            await context.SaveChangesAsync(cancellationToken);
         }
     }
 
@@ -148,5 +165,12 @@ public class AppointmentReminderBackgroundService : BackgroundService
     {
         TwentyFourHours,
         TwoHours
+    }
+
+    private static string GetReminderLabel(ReminderType reminderType)
+    {
+        return reminderType == ReminderType.TwoHours
+            ? "2-hour"
+            : "24-hour";
     }
 }

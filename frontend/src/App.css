@@ -1072,6 +1072,73 @@ button:active {
   flex: 1 1 150px;
 }
 
+.audit-log-filters label {
+  flex: 1 1 150px;
+}
+
+.audit-log-table {
+  overflow-x: auto;
+}
+
+.audit-log-table table {
+  min-width: 1040px;
+}
+
+.audit-log-date {
+  white-space: nowrap;
+}
+
+.audit-log-event {
+  min-width: 250px;
+  color: #111827;
+  font-weight: 600;
+}
+
+.audit-log-details {
+  min-width: 280px;
+  max-width: 420px;
+  color: #6b7280;
+  line-height: 1.45;
+}
+
+.audit-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.audit-badge-entity {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.audit-action-created,
+.audit-action-activated,
+.audit-action-remindersent {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.audit-action-cancelled,
+.audit-action-deactivated,
+.audit-action-deleted,
+.audit-action-reminderfailed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.audit-action-completed,
+.audit-action-updated,
+.audit-action-rolechanged {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
 .clear-filters-button {
   margin-bottom: 1px;
 }

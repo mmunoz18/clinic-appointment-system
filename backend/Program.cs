@@ -14,12 +14,14 @@ builder.Services.AddDbContext<ClinicDbContext>(options =>
         builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+builder.Services.AddHttpContextAccessor();
 builder.Services.Configure<EmailSettings>(
     builder.Configuration.GetSection(EmailSettings.SectionName));
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<
     IAppointmentReminderService,
     AppointmentReminderService>();
+builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddHostedService<AppointmentReminderBackgroundService>();
 
 builder.Services.AddCors(options =>
