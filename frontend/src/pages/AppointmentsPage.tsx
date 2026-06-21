@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   createAppointment,
   deleteAppointment,
-  getAppointments,
+  getAppointmentsPaged,
   getDoctorAvailability,
   getDoctors,
   getPatients,
@@ -20,6 +20,7 @@ import FormCard from "../components/FormCard";
 import Modal from "../components/Modal";
 import AppointmentStatusBadge from "../components/AppointmentStatusBadge";
 import StatusBadge from "../components/StatusBadge";
+import Pagination from "../components/Pagination";
 
 function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -42,6 +43,14 @@ function AppointmentsPage() {
   const [appointmentToDelete, setAppointmentToDelete] = useState<Appointment | null>(null);
   const [appointmentToComplete, setAppointmentToComplete] =
     useState<Appointment | null>(null);
+  const [filterDoctorId, setFilterDoctorId] = useState("");
+  const [filterPatientId, setFilterPatientId] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
   
   const role = localStorage.getItem("role");
   const canCreateAppointments = role === "Admin" || role === "Receptionist";
@@ -73,34 +82,68 @@ function AppointmentsPage() {
     !appointmentChanged ||
     saving;
 
-  async function loadData() {
+  const loadAppointments = useCallback(async () => {
     setLoading(true);
 
     try {
-      const [appointmentsData, doctorsData, patientsData] = await Promise.all([
-        getAppointments(),
-        getDoctors(),
-        getPatients(),
-      ]);
+      const data = await getAppointmentsPaged({
+        doctorId: filterDoctorId ? Number(filterDoctorId) : undefined,
+        patientId: filterPatientId ? Number(filterPatientId) : undefined,
+        status: filterStatus || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+        page,
+      });
 
-      setAppointments(appointmentsData);
-      setDoctors(doctorsData);
-      setPatients(patientsData);
+      if (data.totalPages > 0 && page > data.totalPages) {
+        setPage(data.totalPages);
+        return;
+      }
+
+      setAppointments(data.items);
+      setTotalPages(data.totalPages);
+      setTotalCount(data.totalCount);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error loading appointments";
       toast.error(message);
     } finally {
       setLoading(false);
     }
-  }
+  }, [
+    dateFrom,
+    dateTo,
+    filterDoctorId,
+    filterPatientId,
+    filterStatus,
+    page,
+  ]);
+
+  useEffect(() => {
+    async function loadLookups() {
+      try {
+        const [doctorsData, patientsData] = await Promise.all([
+          getDoctors(),
+          getPatients(),
+        ]);
+        setDoctors(doctorsData);
+        setPatients(patientsData);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Error loading form options";
+        toast.error(message);
+      }
+    }
+
+    loadLookups();
+  }, []);
 
   useEffect(() => {
     async function loadAppointmentsPage() {
-      await loadData();
+      await loadAppointments();
     }
 
     loadAppointmentsPage();
-  }, []);
+  }, [loadAppointments]);
 
   useEffect(() => {
     async function loadSelectedDoctorAvailability() {
@@ -181,7 +224,7 @@ function AppointmentsPage() {
       }
 
       clearAppointmentForm();
-      await loadData();
+      await loadAppointments();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Something went wrong";
       toast.error(message);
@@ -223,7 +266,7 @@ function AppointmentsPage() {
         await deleteAppointment(appointmentToDelete.id);
         toast.success("Appointment deleted successfully");
         setAppointmentToDelete(null);
-        await loadData();
+        await loadAppointments();
     } catch (error) {
         const message = error instanceof Error ? error.message : "Error deleting appointment";
         toast.error(message);
@@ -242,7 +285,7 @@ function AppointmentsPage() {
       });
       toast.success("Appointment marked as completed");
       setAppointmentToComplete(null);
-      await loadData();
+      await loadAppointments();
     } catch (error) {
       const message =
         error instanceof Error
@@ -269,6 +312,109 @@ function AppointmentsPage() {
           + New Appointment
         </button>
       )}
+
+      <div className="list-filters appointment-filters">
+        {role !== "Doctor" && (
+          <label>
+            <span>Doctor</span>
+            <select
+              value={filterDoctorId}
+              onChange={(event) => {
+                setFilterDoctorId(event.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">All doctors</option>
+              {doctors.map((doctor) => (
+                <option key={doctor.id} value={doctor.id}>
+                  {doctor.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        <label>
+          <span>Patient</span>
+          <select
+            value={filterPatientId}
+            onChange={(event) => {
+              setFilterPatientId(event.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="">All patients</option>
+            {patients.map((patient) => (
+              <option key={patient.id} value={patient.id}>
+                {patient.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          <span>Status</span>
+          <select
+            value={filterStatus}
+            onChange={(event) => {
+              setFilterStatus(event.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="">All statuses</option>
+            <option value="Scheduled">Scheduled</option>
+            <option value="Completed">Completed</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+        </label>
+
+        <label>
+          <span>From</span>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(event) => {
+              setDateFrom(event.target.value);
+              setPage(1);
+            }}
+          />
+        </label>
+
+        <label>
+          <span>To</span>
+          <input
+            type="date"
+            value={dateTo}
+            min={dateFrom || undefined}
+            onChange={(event) => {
+              setDateTo(event.target.value);
+              setPage(1);
+            }}
+          />
+        </label>
+
+        <button
+          type="button"
+          className="secondary-button clear-filters-button"
+          disabled={
+            !filterDoctorId &&
+            !filterPatientId &&
+            !filterStatus &&
+            !dateFrom &&
+            !dateTo
+          }
+          onClick={() => {
+            setFilterDoctorId("");
+            setFilterPatientId("");
+            setFilterStatus("");
+            setDateFrom("");
+            setDateTo("");
+            setPage(1);
+          }}
+        >
+          Clear filters
+        </button>
+      </div>
 
       {isFormOpen && (
         <Modal
@@ -449,6 +595,15 @@ function AppointmentsPage() {
           </tbody>
         </table>
       </div>
+      )}
+
+      {!loading && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          totalCount={totalCount}
+          onPageChange={setPage}
+        />
       )}
       
       {appointmentToDelete && (

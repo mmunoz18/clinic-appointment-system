@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useState } from "react";
 import { 
     createPatient,
     activatePatient,
     deactivatePatient,
-    getPatients,
+    getPatientsPaged,
     updatePatient,
     type Patient,
 } from "../api/clinicApi";
@@ -15,6 +15,7 @@ import FormActions from "../components/FormActions";
 import FormCard from "../components/FormCard";
 import Modal from "../components/Modal";
 import StatusBadge from "../components/StatusBadge";
+import Pagination from "../components/Pagination";
 
 function PatientsPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -31,6 +32,12 @@ function PatientsPage() {
     Partial<Record<"name" | "email" | "cedula", string>>
   >({});
   const [patientToDeactivate, setPatientToDeactivate] = useState<Patient | null>(null);
+  const [search, setSearch] = useState("");
+  const [showInactive, setShowInactive] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
+  const deferredSearch = useDeferredValue(search);
 
   const role = localStorage.getItem("role");
   const canManagePatients = role === "Admin" || role === "Receptionist";
@@ -74,15 +81,27 @@ function PatientsPage() {
     setLoading(true);
 
     try {
-      const data = await getPatients(role === "Admin");
-      setPatients(data);
+      const data = await getPatientsPaged({
+        search: deferredSearch,
+        includeInactive: role === "Admin" && showInactive,
+        page,
+      });
+
+      if (data.totalPages > 0 && page > data.totalPages) {
+        setPage(data.totalPages);
+        return;
+      }
+
+      setPatients(data.items);
+      setTotalPages(data.totalPages);
+      setTotalCount(data.totalCount);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error loading patients";
       toast.error(message);
     } finally {
       setLoading(false);
     }
-  }, [role]);
+  }, [deferredSearch, page, role, showInactive]);
 
   useEffect(() => {
     async function loadPatientsPage() {
@@ -215,6 +234,35 @@ function PatientsPage() {
             + Add Patient
           </button>
         )}
+
+        <div className="list-filters">
+          <label className="filter-search">
+            <span>Search patients</span>
+            <input
+              type="search"
+              value={search}
+              placeholder="Name or email"
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+            />
+          </label>
+
+          {role === "Admin" && (
+            <label className="checkbox-filter">
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={(event) => {
+                  setShowInactive(event.target.checked);
+                  setPage(1);
+                }}
+              />
+              Show inactive
+            </label>
+          )}
+        </div>
 
         {canManagePatients && isFormOpen && (
           <Modal
@@ -390,6 +438,15 @@ function PatientsPage() {
           </tbody>
         </table>
         </div>
+        )}
+
+        {!loading && (
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            onPageChange={setPage}
+          />
         )}
         
         {patientToDeactivate && (

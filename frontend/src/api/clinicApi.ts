@@ -123,6 +123,24 @@ export type PatientNote = {
   canEdit: boolean;
 };
 
+export type PagedResult<T> = {
+  items: T[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+};
+
+export type AppointmentFilters = {
+  doctorId?: number;
+  patientId?: number;
+  status?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  pageSize?: number;
+};
+
 function getAuthHeaders(): HeadersInit {
   const token = localStorage.getItem("token");
 
@@ -143,12 +161,52 @@ export async function getDoctors(includeInactive = false) {
   return handleResponse(response, "Failed to fetch doctors");
 }
 
+export async function getDoctorsPaged(options: {
+  search?: string;
+  includeInactive?: boolean;
+  page?: number;
+  pageSize?: number;
+}): Promise<PagedResult<Doctor>> {
+  const params = new URLSearchParams({
+    search: options.search ?? "",
+    includeInactive: String(options.includeInactive ?? false),
+    page: String(options.page ?? 1),
+    pageSize: String(options.pageSize ?? 10),
+  });
+  const response = await fetch(
+    `${API_BASE_URL}/api/doctors/paged?${params}`,
+    { headers: getAuthHeaders() }
+  );
+
+  return handleResponse(response, "Failed to fetch doctors");
+}
+
 export async function getPatients(includeInactive = false) {
   const response = await fetch(
     `${API_BASE_URL}/api/patients?includeInactive=${includeInactive}`,
     {
     headers: getAuthHeaders(),
     }
+  );
+
+  return handleResponse(response, "Failed to fetch patients");
+}
+
+export async function getPatientsPaged(options: {
+  search?: string;
+  includeInactive?: boolean;
+  page?: number;
+  pageSize?: number;
+}): Promise<PagedResult<Patient>> {
+  const params = new URLSearchParams({
+    search: options.search ?? "",
+    includeInactive: String(options.includeInactive ?? false),
+    page: String(options.page ?? 1),
+    pageSize: String(options.pageSize ?? 10),
+  });
+  const response = await fetch(
+    `${API_BASE_URL}/api/patients/paged?${params}`,
+    { headers: getAuthHeaders() }
   );
 
   return handleResponse(response, "Failed to fetch patients");
@@ -166,6 +224,28 @@ export async function getAppointments() {
   const response = await fetch(`${API_BASE_URL}/api/appointments`, {
     headers: getAuthHeaders(),
   });
+
+  return handleResponse(response, "Failed to fetch appointments");
+}
+
+export async function getAppointmentsPaged(
+  filters: AppointmentFilters
+): Promise<PagedResult<Appointment>> {
+  const params = new URLSearchParams({
+    page: String(filters.page ?? 1),
+    pageSize: String(filters.pageSize ?? 10),
+  });
+
+  if (filters.doctorId) params.set("doctorId", String(filters.doctorId));
+  if (filters.patientId) params.set("patientId", String(filters.patientId));
+  if (filters.status) params.set("status", filters.status);
+  if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
+  if (filters.dateTo) params.set("dateTo", filters.dateTo);
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/appointments/paged?${params}`,
+    { headers: getAuthHeaders() }
+  );
 
   return handleResponse(response, "Failed to fetch appointments");
 }

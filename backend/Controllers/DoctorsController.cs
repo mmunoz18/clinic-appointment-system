@@ -3,6 +3,7 @@ using backend.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using backend.DTOs;
 
 namespace backend.Controllers;
 
@@ -44,6 +45,58 @@ public class DoctorsController : ControllerBase
             .ToListAsync();
 
         return Ok(doctors);
+    }
+
+    [HttpGet("paged")]
+    [Authorize(Policy = "AllRoles")]
+    public async Task<IActionResult> GetDoctorsPaged(
+        [FromQuery] string? search = null,
+        [FromQuery] bool includeInactive = false,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10)
+    {
+        page = Math.Max(page, 1);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var query = _context.Doctors.AsNoTracking();
+
+        if (!includeInactive || !User.IsInRole("Admin"))
+        {
+            query = query.Where(doctor => doctor.IsActive);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim().ToLower();
+            query = query.Where(doctor =>
+                doctor.Name.ToLower().Contains(normalizedSearch) ||
+                doctor.Specialty.ToLower().Contains(normalizedSearch));
+        }
+
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .OrderBy(doctor => doctor.Name)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(doctor => new
+            {
+                doctor.Id,
+                doctor.Name,
+                doctor.Specialty,
+                doctor.Cedula,
+                doctor.IsActive,
+                HasLinkedUser = doctor.User != null,
+                LinkedUserIsActive = doctor.User != null && doctor.User.IsActive
+            })
+            .ToListAsync();
+
+        return Ok(new PagedResult<object>
+        {
+            Items = items.Cast<object>().ToList(),
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = totalCount
+        });
     }
 
     [HttpGet("{id}")]

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using backend.DTOs;
 
 namespace backend.Controllers;
 
@@ -34,6 +35,48 @@ public class PatientsController : ControllerBase
         var patients = await query.ToListAsync();
 
         return Ok(patients);
+    }
+
+    [HttpGet("paged")]
+    [Authorize(Policy = "AdminOrReceptionist")]
+    public async Task<IActionResult> GetPatientsPaged(
+        [FromQuery] string? search = null,
+        [FromQuery] bool includeInactive = false,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10)
+    {
+        page = Math.Max(page, 1);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var query = _context.Patients.AsNoTracking();
+
+        if (!includeInactive || !User.IsInRole("Admin"))
+        {
+            query = query.Where(patient => patient.IsActive);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim().ToLower();
+            query = query.Where(patient =>
+                patient.Name.ToLower().Contains(normalizedSearch) ||
+                patient.Email.ToLower().Contains(normalizedSearch));
+        }
+
+        var totalCount = await query.CountAsync();
+        var patients = await query
+            .OrderBy(patient => patient.Name)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return Ok(new PagedResult<Patient>
+        {
+            Items = patients,
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = totalCount
+        });
     }
 
     [HttpGet("{id}")]

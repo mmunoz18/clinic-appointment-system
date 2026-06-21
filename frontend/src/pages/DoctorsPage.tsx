@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useState } from "react";
 import {
   createDoctor,
   activateDoctor,
   deactivateDoctor,
-  getDoctors,
+  getDoctorsPaged,
   updateDoctor,
   type Doctor,
 } from "../api/clinicApi";
@@ -14,6 +14,7 @@ import FormActions from "../components/FormActions";
 import FormCard from "../components/FormCard";
 import Modal from "../components/Modal";
 import StatusBadge from "../components/StatusBadge";
+import Pagination from "../components/Pagination";
 
 function DoctorsPage() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -31,6 +32,12 @@ function DoctorsPage() {
   const [doctorToDeactivate, setDoctorToDeactivate] = useState<Doctor | null>(null);
   const [doctorToActivate, setDoctorToActivate] = useState<Doctor | null>(null);
   const [changingStatus, setChangingStatus] = useState(false);
+  const [search, setSearch] = useState("");
+  const [showInactive, setShowInactive] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
+  const deferredSearch = useDeferredValue(search);
 
   const role = localStorage.getItem("role");
   const canManageDoctors = role === "Admin";
@@ -65,15 +72,27 @@ function DoctorsPage() {
     setLoading(true);
 
     try {
-      const data = await getDoctors(canManageDoctors);
-      setDoctors(data);
+      const data = await getDoctorsPaged({
+        search: deferredSearch,
+        includeInactive: canManageDoctors && showInactive,
+        page,
+      });
+
+      if (data.totalPages > 0 && page > data.totalPages) {
+        setPage(data.totalPages);
+        return;
+      }
+
+      setDoctors(data.items);
+      setTotalPages(data.totalPages);
+      setTotalCount(data.totalCount);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error loading doctors";
       toast.error(message);
     } finally {
       setLoading(false);
     }
-  }, [canManageDoctors]);
+  }, [canManageDoctors, deferredSearch, page, showInactive]);
 
   useEffect(() => {
     async function loadDoctorsPage() {
@@ -234,6 +253,35 @@ function DoctorsPage() {
         </button>
       )}
 
+      <div className="list-filters">
+        <label className="filter-search">
+          <span>Search doctors</span>
+          <input
+            type="search"
+            value={search}
+            placeholder="Name or specialty"
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+          />
+        </label>
+
+        {canManageDoctors && (
+          <label className="checkbox-filter">
+            <input
+              type="checkbox"
+              checked={showInactive}
+              onChange={(event) => {
+                setShowInactive(event.target.checked);
+                setPage(1);
+              }}
+            />
+            Show inactive
+          </label>
+        )}
+      </div>
+
       {canManageDoctors && isFormOpen && (
         <Modal
           titleId="doctor-form-modal-title"
@@ -381,6 +429,15 @@ function DoctorsPage() {
           </tbody>
         </table>
       </div>
+      )}
+
+      {!loading && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          totalCount={totalCount}
+          onPageChange={setPage}
+        />
       )}
       
       {doctorToDeactivate && (

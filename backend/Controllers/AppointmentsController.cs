@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using backend.DTOs;
 
 namespace backend.Controllers;
 
@@ -56,6 +57,95 @@ public class AppointmentsController : ControllerBase
         .ToListAsync();
 
         return Ok(appointments);
+    }
+
+    [HttpGet("paged")]
+    [Authorize(Policy = "AllRoles")]
+    public async Task<IActionResult> GetAppointmentsPaged(
+        [FromQuery] int? doctorId = null,
+        [FromQuery] int? patientId = null,
+        [FromQuery] string? status = null,
+        [FromQuery] DateTime? dateFrom = null,
+        [FromQuery] DateTime? dateTo = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10)
+    {
+        page = Math.Max(page, 1);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var query = _context.Appointments.AsNoTracking().AsQueryable();
+
+        if (User.IsInRole("Doctor"))
+        {
+            var loggedInDoctorId = await GetLoggedInDoctorIdAsync();
+            if (!loggedInDoctorId.HasValue)
+            {
+                return StatusCode(
+                    StatusCodes.Status403Forbidden,
+                    "Your user account is not linked to a doctor profile. Contact an administrator.");
+            }
+
+            query = query.Where(appointment =>
+                appointment.DoctorId == loggedInDoctorId.Value);
+        }
+        else if (doctorId.HasValue)
+        {
+            query = query.Where(appointment =>
+                appointment.DoctorId == doctorId.Value);
+        }
+
+        if (patientId.HasValue)
+        {
+            query = query.Where(appointment =>
+                appointment.PatientId == patientId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            query = query.Where(appointment => appointment.Status == status);
+        }
+
+        if (dateFrom.HasValue)
+        {
+            query = query.Where(appointment =>
+                appointment.AppointmentDate >= dateFrom.Value.Date);
+        }
+
+        if (dateTo.HasValue)
+        {
+            var dateToExclusive = dateTo.Value.Date.AddDays(1);
+            query = query.Where(appointment =>
+                appointment.AppointmentDate < dateToExclusive);
+        }
+
+        var totalCount = await query.CountAsync();
+        var appointments = await query
+            .OrderByDescending(appointment => appointment.AppointmentDate)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(appointment => new
+            {
+                appointment.Id,
+                appointment.DoctorId,
+                DoctorName = appointment.Doctor != null
+                    ? appointment.Doctor.Name
+                    : "",
+                appointment.PatientId,
+                PatientName = appointment.Patient != null
+                    ? appointment.Patient.Name
+                    : "",
+                appointment.AppointmentDate,
+                appointment.Status
+            })
+            .ToListAsync();
+
+        return Ok(new PagedResult<object>
+        {
+            Items = appointments.Cast<object>().ToList(),
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = totalCount
+        });
     }
 
     [HttpGet("{id}")]
