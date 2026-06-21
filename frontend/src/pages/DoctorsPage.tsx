@@ -15,6 +15,7 @@ import FormCard from "../components/FormCard";
 import Modal from "../components/Modal";
 import StatusBadge from "../components/StatusBadge";
 import Pagination from "../components/Pagination";
+import TableActions from "../components/TableActions";
 
 function DoctorsPage() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -403,25 +404,36 @@ function DoctorsPage() {
                 </td>
                 {canManageDoctors && (
                   <td>
-                    <button
-                      disabled={!doctor.isActive}
-                      onClick={() => handleEdit(doctor)}
-                    >
-                      Edit
-                    </button>
-                    {doctor.isActive ? (
-                      <button onClick={() => setDoctorToDeactivate(doctor)}>
-                        Deactivate
-                      </button>
-                    ) : (
-                      <button
-                        className="activate-button"
-                        disabled={changingStatus}
-                        onClick={() => openActivateDoctor(doctor)}
-                      >
-                        Activate
-                      </button>
-                    )}
+                    <TableActions
+                      primaryActions={
+                        doctor.isActive
+                          ? [
+                              {
+                                label: "Edit",
+                                onClick: () => handleEdit(doctor),
+                              },
+                            ]
+                          : [
+                              {
+                                label: "Activate",
+                                tone: "positive",
+                                disabled: changingStatus,
+                                onClick: () => openActivateDoctor(doctor),
+                              },
+                            ]
+                      }
+                      menuActions={
+                        doctor.isActive
+                          ? [
+                              {
+                                label: "Deactivate",
+                                tone: "danger",
+                                onClick: () => setDoctorToDeactivate(doctor),
+                              },
+                            ]
+                          : []
+                      }
+                    />
                   </td>
                 )}
               </tr>

@@ -27,6 +27,8 @@ export type Appointment = {
   patientName: string;
   appointmentDate: string;
   status: string;
+  reminderStatus?: "Pending" | "Sent" | "Failed" | "NotApplicable";
+  reminderSentAt?: string | null;
 }
 
 export type AuthResponse = {
@@ -139,6 +141,16 @@ export type AppointmentFilters = {
   dateTo?: string;
   page?: number;
   pageSize?: number;
+};
+
+export type ReminderSettings = {
+  id: number;
+  enabled: boolean;
+  send24HoursBefore: boolean;
+  send2HoursBefore: boolean;
+  lastCheckAt: string | null;
+  lastReminderSentAt: string | null;
+  nextCheckAt: string | null;
 };
 
 function getAuthHeaders(): HeadersInit {
@@ -359,6 +371,44 @@ export async function deleteAppointment(id: number) {
   });
 
   return handleResponse(response, "Failed to delete appointment");
+}
+
+export async function sendAppointmentReminder(
+  id: number
+): Promise<{ message: string }> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/appointments/${id}/send-reminder`,
+    {
+      method: "POST",
+      headers: getAuthHeaders(),
+    }
+  );
+
+  return handleResponse(response, "Failed to send appointment reminder");
+}
+
+export async function getReminderSettings(): Promise<ReminderSettings> {
+  const response = await fetch(`${API_BASE_URL}/api/reminder-settings`, {
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse(response, "Failed to fetch reminder settings");
+}
+
+export async function updateReminderSettings(
+  settings: ReminderSettings
+): Promise<ReminderSettings> {
+  const response = await fetch(`${API_BASE_URL}/api/reminder-settings`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({
+      enabled: settings.enabled,
+      send24HoursBefore: settings.send24HoursBefore,
+      send2HoursBefore: settings.send2HoursBefore,
+    }),
+  });
+
+  return handleResponse(response, "Failed to update reminder settings");
 }
 
 export async function login(email: string, password: string): Promise<AuthResponse> {

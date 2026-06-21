@@ -36,6 +36,9 @@ function Layout() {
           {(isAdmin || isReceptionist) && (
             <NavLink to="/appointments">Appointments</NavLink>
           )}
+          {isAdmin && (
+            <NavLink to="/reminder-settings">Reminder Settings</NavLink>
+          )}
           {isDoctor && <NavLink to="/my-patients">My Patients</NavLink>}
           {isDoctor && <NavLink to="/my-appointments">My Appointments</NavLink>}
           {isDoctor && <NavLink to="/my-availability">My Availability</NavLink>}

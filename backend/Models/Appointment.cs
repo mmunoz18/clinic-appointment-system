@@ -13,4 +13,14 @@ public class Appointment
     public DateTime AppointmentDate { get; set; }
 
     public string Status { get; set; } = "Scheduled";
+
+    public DateTimeOffset? ManualReminderSentAt { get; set; }
+
+    public DateTimeOffset? Reminder24HoursSentAt { get; set; }
+
+    public DateTimeOffset? Reminder2HoursSentAt { get; set; }
+
+    public DateTimeOffset? ReminderLastAttemptAt { get; set; }
+
+    public string? ReminderLastError { get; set; }
 }

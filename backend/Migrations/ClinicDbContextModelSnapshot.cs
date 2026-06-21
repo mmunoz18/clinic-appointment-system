@@ -32,6 +32,21 @@ namespace backend.Migrations
                     b.Property<int>("PatientId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTimeOffset?>("ManualReminderSentAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("Reminder24HoursSentAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("Reminder2HoursSentAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReminderLastError")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("ReminderLastAttemptAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -164,6 +179,44 @@ namespace backend.Migrations
                     b.HasIndex("PatientId", "CreatedAt");
 
                     b.ToTable("PatientNotes");
+                });
+
+            modelBuilder.Entity("backend.Models.ReminderSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset?>("LastCheckAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("LastReminderSentAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("NextCheckAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Send24HoursBefore")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Send2HoursBefore")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ReminderSettings");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Enabled = false,
+                            Send24HoursBefore = true,
+                            Send2HoursBefore = true
+                        });
                 });
 
             modelBuilder.Entity("backend.Models.User", b =>

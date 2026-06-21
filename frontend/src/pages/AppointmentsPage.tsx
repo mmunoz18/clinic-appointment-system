@@ -6,6 +6,7 @@ import {
   getDoctorAvailability,
   getDoctors,
   getPatients,
+  sendAppointmentReminder,
   updateAppointment,
   type Appointment,
   type Doctor,
@@ -21,6 +22,9 @@ import Modal from "../components/Modal";
 import AppointmentStatusBadge from "../components/AppointmentStatusBadge";
 import StatusBadge from "../components/StatusBadge";
 import Pagination from "../components/Pagination";
+import { formatDateTime } from "../utils/dateTime";
+import ReminderStatusBadge from "../components/ReminderStatusBadge";
+import TableActions from "../components/TableActions";
 
 function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -51,6 +55,12 @@ function AppointmentsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
+  const [sendingReminderId, setSendingReminderId] = useState<number | null>(
+    null
+  );
+  const [cancellingAppointmentId, setCancellingAppointmentId] = useState<
+    number | null
+  >(null);
   
   const role = localStorage.getItem("role");
   const canCreateAppointments = role === "Admin" || role === "Receptionist";
@@ -292,6 +302,53 @@ function AppointmentsPage() {
           ? error.message
           : "Error completing appointment";
       toast.error(message);
+    }
+  }
+
+  async function handleSendReminder(appointment: Appointment) {
+    if (sendingReminderId != null) {
+      return;
+    }
+
+    setSendingReminderId(appointment.id);
+
+    try {
+      const result = await sendAppointmentReminder(appointment.id);
+      toast.success(result.message);
+      await loadAppointments();
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Error sending appointment reminder";
+      toast.error(message);
+    } finally {
+      setSendingReminderId(null);
+    }
+  }
+
+  async function handleCancelAppointment(appointment: Appointment) {
+    if (cancellingAppointmentId != null) {
+      return;
+    }
+
+    setCancellingAppointmentId(appointment.id);
+
+    try {
+      await updateAppointment({
+        ...appointment,
+        status: "Cancelled",
+      });
+      toast.success("Appointment cancelled successfully");
+      await loadAppointments();
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Error cancelling appointment";
+      toast.error(message);
+    } finally {
+      setCancellingAppointmentId(null);
     }
   }
 
@@ -541,6 +598,7 @@ function AppointmentsPage() {
               <th>Patient</th>
               <th>Date</th>
               <th>Status</th>
+              <th>Reminder</th>
               {canEditAppointments && <th>Actions</th>}
             </tr>
           </thead>
@@ -549,44 +607,96 @@ function AppointmentsPage() {
             {appointments.length === 0 ? (
               <EmptyState
                 message="No appointments found."
-                colSpan={canEditAppointments ? 5 : 4}
+                colSpan={canEditAppointments ? 6 : 5}
               />
             ) : (
               appointments.map((appointment) => (
                 <tr key={appointment.id}>
                   <td>{appointment.doctorName}</td>
                   <td>{appointment.patientName}</td>
-                  <td>{new Date(appointment.appointmentDate).toLocaleString("es-ES", {dateStyle: "medium",timeStyle: "short"})}</td>
+                  <td>{formatDateTime(appointment.appointmentDate)}</td>
                   <td>
                     <AppointmentStatusBadge status={appointment.status} />
                   </td>
+                  <td>
+                    <ReminderStatusBadge
+                      status={appointment.reminderStatus}
+                    />
+                  </td>
                   {canEditAppointments && (
                     <td>
-                      {appointment.status === "Completed" && (
-                        <StatusBadge
-                          active={false}
-                          inactiveLabel="✓ Finalized"
-                        />
-                      )}
-                      {appointment.status !== "Completed" && (
-                        <button onClick={() => handleEdit(appointment)}>
-                          Edit
-                        </button>
-                      )}
-                      {appointment.status === "Scheduled" && (
-                        <button
-                          className="complete-button"
-                          onClick={() => setAppointmentToComplete(appointment)}
-                        >
-                          Mark completed
-                        </button>
-                      )}
-                      {canDeleteAppointments &&
-                        appointment.status !== "Completed" && (
-                        <button onClick={() => setAppointmentToDelete(appointment)}>
-                          Delete
-                        </button>
-                      )}
+                      <TableActions
+                        status={
+                          appointment.status === "Completed" ? (
+                            <StatusBadge
+                              active={false}
+                              inactiveLabel="✓ Finalized"
+                            />
+                          ) : undefined
+                        }
+                        primaryActions={[
+                          ...(appointment.status !== "Completed"
+                            ? [
+                                {
+                                  label: "Edit",
+                                  onClick: () => handleEdit(appointment),
+                                },
+                              ]
+                            : []),
+                          ...(appointment.status === "Scheduled"
+                            ? [
+                                {
+                                  label: "Complete",
+                                  tone: "positive" as const,
+                                  onClick: () =>
+                                    setAppointmentToComplete(appointment),
+                                },
+                              ]
+                            : []),
+                        ]}
+                        menuActions={[
+                          ...(canCreateAppointments &&
+                          appointment.status === "Scheduled" &&
+                          new Date(appointment.appointmentDate) > new Date()
+                            ? [
+                                {
+                                  label:
+                                    sendingReminderId === appointment.id
+                                      ? "Sending..."
+                                      : "Send Reminder",
+                                  disabled: sendingReminderId != null,
+                                  onClick: () =>
+                                    void handleSendReminder(appointment),
+                                },
+                              ]
+                            : []),
+                          ...(appointment.status === "Scheduled"
+                            ? [
+                                {
+                                  label:
+                                    cancellingAppointmentId === appointment.id
+                                      ? "Cancelling..."
+                                      : "Cancel Appointment",
+                                  tone: "info" as const,
+                                  disabled: cancellingAppointmentId != null,
+                                  onClick: () =>
+                                    void handleCancelAppointment(appointment),
+                                },
+                              ]
+                            : []),
+                          ...(canDeleteAppointments &&
+                          appointment.status !== "Completed"
+                            ? [
+                                {
+                                  label: "Delete Appointment",
+                                  tone: "danger" as const,
+                                  onClick: () =>
+                                    setAppointmentToDelete(appointment),
+                                },
+                              ]
+                            : []),
+                        ]}
+                      />
                     </td>
                   )}
                 </tr>

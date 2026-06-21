@@ -20,6 +20,8 @@ public class ClinicDbContext : DbContext
 
     public DbSet<PatientNote> PatientNotes { get; set; }
 
+    public DbSet<ReminderSettings> ReminderSettings { get; set; }
+
     public DbSet<User> Users => Set<User>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -77,5 +79,14 @@ public class ClinicDbContext : DbContext
             .WithOne(doctor => doctor.User)
             .HasForeignKey<User>(user => user.DoctorId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<ReminderSettings>()
+            .HasData(new ReminderSettings
+            {
+                Id = 1,
+                Enabled = false,
+                Send24HoursBefore = true,
+                Send2HoursBefore = true
+            });
     }
 }

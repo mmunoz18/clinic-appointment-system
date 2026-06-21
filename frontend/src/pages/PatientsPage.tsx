@@ -9,15 +9,17 @@ import {
 } from "../api/clinicApi";
 import { toast } from "react-toastify";
 import ConfirmModal from "../components/ConfirmModal";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import EmptyState from "../components/EmptyState";
 import FormActions from "../components/FormActions";
 import FormCard from "../components/FormCard";
 import Modal from "../components/Modal";
 import StatusBadge from "../components/StatusBadge";
 import Pagination from "../components/Pagination";
+import TableActions from "../components/TableActions";
 
 function PatientsPage() {
+  const navigate = useNavigate();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
@@ -375,8 +377,7 @@ function PatientsPage() {
                 <th>Cedula</th>
                 <th>Phone Number</th>
                 <th>Status</th>
-                {canViewNotes && <th>Medical Notes</th>}
-                {showPatientActions && <th>Actions</th>}
+                {(canViewNotes || showPatientActions) && <th>Actions</th>}
             </tr>
             </thead>
             <tbody>
@@ -384,7 +385,7 @@ function PatientsPage() {
               <EmptyState
                 message="No patients found."
                 colSpan={
-                  5 + (canViewNotes ? 1 : 0) + (showPatientActions ? 1 : 0)
+                  5 + (canViewNotes || showPatientActions ? 1 : 0)
                 }
               />
             ) : (
@@ -397,41 +398,53 @@ function PatientsPage() {
                 <td>
                   <StatusBadge active={patient.isActive} />
                 </td>
-                {canViewNotes && (
+                {(canViewNotes || showPatientActions) && (
                   <td>
-                    <Link
-                      className="table-link-button"
-                      to={`/patients/${patient.id}`}
-                    >
-                      View Notes
-                    </Link>
+                    <TableActions
+                      primaryActions={[
+                        ...(canViewNotes
+                          ? [
+                              {
+                                label: "View Notes",
+                                onClick: () =>
+                                  navigate(`/patients/${patient.id}`),
+                              },
+                            ]
+                          : []),
+                        ...(canEditPatients && patient.isActive
+                          ? [
+                              {
+                                label: "Edit",
+                                onClick: () =>
+                                  handleEditPatient(patient),
+                              },
+                            ]
+                          : []),
+                        ...(canDeletePatients && !patient.isActive
+                          ? [
+                              {
+                                label: "Activate",
+                                tone: "positive" as const,
+                                onClick: () =>
+                                  void handleActivatePatient(patient),
+                              },
+                            ]
+                          : []),
+                      ]}
+                      menuActions={
+                        canDeletePatients && patient.isActive
+                          ? [
+                              {
+                                label: "Deactivate",
+                                tone: "danger",
+                                onClick: () =>
+                                  setPatientToDeactivate(patient),
+                              },
+                            ]
+                          : []
+                      }
+                    />
                   </td>
-                )}
-                {showPatientActions && (
-                <td>
-                  {canEditPatients && (
-                    <button
-                      disabled={!patient.isActive}
-                      onClick={() => handleEditPatient(patient)}
-                    >
-                      Edit
-                    </button>
-                  )}
-                  {canDeletePatients && (
-                    patient.isActive ? (
-                      <button onClick={() => setPatientToDeactivate(patient)}>
-                        Deactivate
-                      </button>
-                    ) : (
-                      <button
-                        className="activate-button"
-                        onClick={() => handleActivatePatient(patient)}
-                      >
-                        Activate
-                      </button>
-                    )
-                  )}
-                </td>
                 )}
               </tr>
             )))}

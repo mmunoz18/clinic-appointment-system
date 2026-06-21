@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   getDoctorPatients,
   type DoctorPatient,
 } from "../api/clinicApi";
 import StatusBadge from "../components/StatusBadge";
 import EmptyState from "../components/EmptyState";
+import { formatDateTime } from "../utils/dateTime";
+import TableActions from "../components/TableActions";
 
 function DoctorPatientsPage() {
   const [patients, setPatients] = useState<DoctorPatient[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     async function loadPatients() {
@@ -42,7 +45,7 @@ function DoctorPatientsPage() {
               <th>Status</th>
               <th>Appointments</th>
               <th>Latest Appointment</th>
-              <th>Details</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -58,19 +61,17 @@ function DoctorPatientsPage() {
                     <StatusBadge active={patient.isActive} />
                   </td>
                   <td>{patient.appointmentCount}</td>
+                  <td>{formatDateTime(patient.lastAppointmentDate)}</td>
                   <td>
-                    {new Date(patient.lastAppointmentDate).toLocaleString("es-CR", {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })}
-                  </td>
-                  <td>
-                    <Link
-                      className="table-link-button"
-                      to={`/patients/${patient.id}`}
-                    >
-                      View Notes
-                    </Link>
+                    <TableActions
+                      primaryActions={[
+                        {
+                          label: "View Notes",
+                          onClick: () =>
+                            navigate(`/patients/${patient.id}`),
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))

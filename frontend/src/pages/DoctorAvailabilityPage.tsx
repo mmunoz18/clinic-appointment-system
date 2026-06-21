@@ -18,6 +18,7 @@ import StatusBadge from "../components/StatusBadge";
 import FormActions from "../components/FormActions";
 import FormCard from "../components/FormCard";
 import Modal from "../components/Modal";
+import TableActions from "../components/TableActions";
 
 type AvailabilityWindow = {
   key: string;
@@ -370,13 +371,17 @@ function DoctorAvailabilityPage() {
                       </td>
                       {isAdmin && (
                         <td>
-                          <button
-                            type="button"
-                            disabled={!doctor.isActive || loadingAvailability}
-                            onClick={() => openAvailabilityForm(doctor)}
-                          >
-                            {isConfigured ? "Edit" : "Configure"}
-                          </button>
+                          <TableActions
+                            primaryActions={[
+                              {
+                                label: isConfigured ? "Edit" : "Configure",
+                                disabled:
+                                  !doctor.isActive || loadingAvailability,
+                                onClick: () =>
+                                  void openAvailabilityForm(doctor),
+                              },
+                            ]}
+                          />
                         </td>
                       )}
                     </tr>
@@ -439,17 +444,18 @@ function DoctorAvailabilityPage() {
                     )}
                   </td>
                   <td>
-                    <button
-                      type="button"
-                      disabled={
-                        !doctors[0].isActive ||
-                        !doctorId ||
-                        loadingAvailability
-                      }
-                      onClick={() => setIsFormOpen(true)}
-                    >
-                      {hasSavedAvailability ? "Edit" : "Configure"}
-                    </button>
+                    <TableActions
+                      primaryActions={[
+                        {
+                          label: hasSavedAvailability ? "Edit" : "Configure",
+                          disabled:
+                            !doctors[0].isActive ||
+                            !doctorId ||
+                            loadingAvailability,
+                          onClick: () => setIsFormOpen(true),
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               )}

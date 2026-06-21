@@ -14,6 +14,7 @@ import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
 import ConfirmModal from "../components/ConfirmModal";
 import StatusBadge from "../components/StatusBadge";
+import TableActions from "../components/TableActions";
 
 const roles = ["Admin", "Receptionist", "Doctor"];
 
@@ -284,31 +285,38 @@ function UsersPage() {
                   <StatusBadge active={user.isActive} />
                 </td>
                 <td>
-                  {user.isActive ? (
-                    <button
-                      type="button"
-                      className="danger-button"
-                      disabled={
-                        saving || accountActionUserId === user.id
-                      }
-                      onClick={() => setUserToDeactivate(user)}
-                    >
-                      Deactivate
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="activate-button"
-                      disabled={
-                        saving || accountActionUserId === user.id
-                      }
-                      onClick={() => void handleActivateUser(user)}
-                    >
-                      {accountActionUserId === user.id
-                        ? "Activating..."
-                        : "Activate"}
-                    </button>
-                  )}
+                  <TableActions
+                    primaryActions={
+                      user.isActive
+                        ? []
+                        : [
+                            {
+                              label:
+                                accountActionUserId === user.id
+                                  ? "Activating..."
+                                  : "Activate",
+                              tone: "positive",
+                              disabled:
+                                saving || accountActionUserId === user.id,
+                              onClick: () =>
+                                void handleActivateUser(user),
+                            },
+                          ]
+                    }
+                    menuActions={
+                      user.isActive
+                        ? [
+                            {
+                              label: "Deactivate",
+                              tone: "danger",
+                              disabled:
+                                saving || accountActionUserId === user.id,
+                              onClick: () => setUserToDeactivate(user),
+                            },
+                          ]
+                        : []
+                    }
+                  />
                 </td>
               </tr>
             )))}

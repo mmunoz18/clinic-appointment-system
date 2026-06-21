@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using backend.DTOs;
+using backend.Services;
 
 namespace backend.Controllers;
 
@@ -14,10 +15,14 @@ namespace backend.Controllers;
 public class AppointmentsController : ControllerBase
 {
     private readonly ClinicDbContext _context;
+    private readonly IAppointmentReminderService _reminderService;
 
-    public AppointmentsController(ClinicDbContext context)
+    public AppointmentsController(
+        ClinicDbContext context,
+        IAppointmentReminderService reminderService)
     {
         _context = context;
+        _reminderService = reminderService;
     }
 
     [HttpGet]
@@ -52,7 +57,21 @@ public class AppointmentsController : ControllerBase
             a.PatientId,
             PatientName = a.Patient != null ? a.Patient.Name : "",
             a.AppointmentDate,
-            a.Status
+            a.Status,
+            ReminderStatus =
+                a.Status != "Scheduled" || a.AppointmentDate <= DateTime.Now
+                    ? "NotApplicable"
+                    : a.ReminderLastError != null
+                        ? "Failed"
+                        : a.ManualReminderSentAt != null ||
+                          a.Reminder24HoursSentAt != null ||
+                          a.Reminder2HoursSentAt != null
+                            ? "Sent"
+                            : "Pending",
+            ReminderSentAt =
+                a.Reminder2HoursSentAt ??
+                a.Reminder24HoursSentAt ??
+                a.ManualReminderSentAt
         })
         .ToListAsync();
 
@@ -135,7 +154,22 @@ public class AppointmentsController : ControllerBase
                     ? appointment.Patient.Name
                     : "",
                 appointment.AppointmentDate,
-                appointment.Status
+                appointment.Status,
+                ReminderStatus =
+                    appointment.Status != "Scheduled" ||
+                    appointment.AppointmentDate <= DateTime.Now
+                        ? "NotApplicable"
+                        : appointment.ReminderLastError != null
+                            ? "Failed"
+                            : appointment.ManualReminderSentAt != null ||
+                              appointment.Reminder24HoursSentAt != null ||
+                              appointment.Reminder2HoursSentAt != null
+                                ? "Sent"
+                                : "Pending",
+                ReminderSentAt =
+                    appointment.Reminder2HoursSentAt ??
+                    appointment.Reminder24HoursSentAt ??
+                    appointment.ManualReminderSentAt
             })
             .ToListAsync();
 
@@ -180,7 +214,21 @@ public class AppointmentsController : ControllerBase
             a.PatientId,
             PatientName = a.Patient != null ? a.Patient.Name : "",
             a.AppointmentDate,
-            a.Status
+            a.Status,
+            ReminderStatus =
+                a.Status != "Scheduled" || a.AppointmentDate <= DateTime.Now
+                    ? "NotApplicable"
+                    : a.ReminderLastError != null
+                        ? "Failed"
+                        : a.ManualReminderSentAt != null ||
+                          a.Reminder24HoursSentAt != null ||
+                          a.Reminder2HoursSentAt != null
+                            ? "Sent"
+                            : "Pending",
+            ReminderSentAt =
+                a.Reminder2HoursSentAt ??
+                a.Reminder24HoursSentAt ??
+                a.ManualReminderSentAt
         })
         .FirstOrDefaultAsync(a => a.Id == id);
         
@@ -218,6 +266,90 @@ public class AppointmentsController : ControllerBase
         catch
         {
             return StatusCode(500, "An unexpected error occurred.");
+        }
+    }
+
+    [HttpPost("{id}/send-reminder")]
+    [Authorize(Policy = "AdminOrReceptionist")]
+    public async Task<IActionResult> SendReminder(
+        int id,
+        CancellationToken cancellationToken)
+    {
+        var appointment = await _context.Appointments
+            .Include(existingAppointment => existingAppointment.Patient)
+            .Include(existingAppointment => existingAppointment.Doctor)
+            .SingleOrDefaultAsync(
+                existingAppointment => existingAppointment.Id == id,
+                cancellationToken);
+
+        if (appointment == null)
+        {
+            return NotFound("Appointment not found.");
+        }
+
+        if (appointment.Status != "Scheduled")
+        {
+            return BadRequest(
+                "Reminders can only be sent for scheduled appointments.");
+        }
+
+        if (appointment.AppointmentDate <= DateTime.Now)
+        {
+            return BadRequest(
+                "Reminders cannot be sent for past appointments.");
+        }
+
+        if (string.IsNullOrWhiteSpace(appointment.Patient?.Email))
+        {
+            return BadRequest(
+                "This patient does not have an email address.");
+        }
+
+        appointment.ReminderLastAttemptAt = DateTimeOffset.UtcNow;
+        try
+        {
+            await _reminderService.SendAsync(appointment, cancellationToken);
+            var sentAt = DateTimeOffset.UtcNow;
+            var timeUntilAppointment =
+                appointment.AppointmentDate - DateTime.Now;
+
+            appointment.ManualReminderSentAt = sentAt;
+
+            if (timeUntilAppointment <= TimeSpan.FromHours(2))
+            {
+                appointment.Reminder2HoursSentAt ??= sentAt;
+            }
+            else if (timeUntilAppointment <= TimeSpan.FromHours(24))
+            {
+                appointment.Reminder24HoursSentAt ??= sentAt;
+            }
+
+            appointment.ReminderLastError = null;
+            await _context.SaveChangesAsync(cancellationToken);
+
+            return Ok(new
+            {
+                Message = $"Reminder sent to {appointment.Patient?.Email}."
+            });
+        }
+        catch (InvalidOperationException exception)
+        {
+            appointment.ReminderLastError = exception.Message;
+            await _context.SaveChangesAsync(cancellationToken);
+
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                exception.Message);
+        }
+        catch
+        {
+            appointment.ReminderLastError =
+                "The reminder could not be sent. Please try again.";
+            await _context.SaveChangesAsync(cancellationToken);
+
+            return StatusCode(
+                StatusCodes.Status502BadGateway,
+                appointment.ReminderLastError);
         }
     }
 
@@ -282,6 +414,12 @@ public class AppointmentsController : ControllerBase
                 {
                     return BadRequest(dateEditError);
                 }
+
+                existingAppointment.ManualReminderSentAt = null;
+                existingAppointment.Reminder24HoursSentAt = null;
+                existingAppointment.Reminder2HoursSentAt = null;
+                existingAppointment.ReminderLastAttemptAt = null;
+                existingAppointment.ReminderLastError = null;
             }
 
             var validationError = await ValidateAppointmentAsync(

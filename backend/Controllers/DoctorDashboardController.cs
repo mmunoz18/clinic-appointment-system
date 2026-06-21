@@ -135,7 +135,21 @@ public class DoctorDashboardController : ControllerBase
                 PatientId = a.PatientId,
                 PatientName = a.Patient != null ? a.Patient.Name : "",
                 AppointmentDate = a.AppointmentDate,
-                Status = a.Status
+                Status = a.Status,
+                ReminderStatus =
+                    a.Status != "Scheduled" || a.AppointmentDate <= DateTime.Now
+                        ? "NotApplicable"
+                        : a.ReminderLastError != null
+                            ? "Failed"
+                            : a.ManualReminderSentAt != null ||
+                              a.Reminder24HoursSentAt != null ||
+                              a.Reminder2HoursSentAt != null
+                                ? "Sent"
+                                : "Pending",
+                ReminderSentAt =
+                    a.Reminder2HoursSentAt ??
+                    a.Reminder24HoursSentAt ??
+                    a.ManualReminderSentAt
             });
     }
 
@@ -172,4 +186,6 @@ public class DoctorAppointmentResponse
     public string PatientName { get; set; } = string.Empty;
     public DateTime AppointmentDate { get; set; }
     public string Status { get; set; } = string.Empty;
+    public string ReminderStatus { get; set; } = string.Empty;
+    public DateTimeOffset? ReminderSentAt { get; set; }
 }

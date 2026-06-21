@@ -12,6 +12,7 @@ import {
 import FormActions from "../components/FormActions";
 import StatusBadge from "../components/StatusBadge";
 import EmptyState from "../components/EmptyState";
+import { formatDateTime } from "../utils/dateTime";
 
 function PatientDetailsPage() {
   const { id } = useParams();
@@ -188,12 +189,7 @@ function PatientDetailsPage() {
                 <div className="note-card-header">
                   <div>
                     <strong>{note.doctorName}</strong>
-                    <time>
-                      {new Date(note.createdAt).toLocaleString("es-CR", {
-                        dateStyle: "medium",
-                        timeStyle: "short",
-                      })}
-                    </time>
+                    <time>{formatDateTime(note.createdAt)}</time>
                   </div>
                   {note.canEdit && (
                     <button
@@ -208,11 +204,7 @@ function PatientDetailsPage() {
                 <p>{note.note}</p>
                 {note.updatedAt !== note.createdAt && (
                   <small>
-                    Updated{" "}
-                    {new Date(note.updatedAt).toLocaleString("es-CR", {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })}
+                    Updated {formatDateTime(note.updatedAt)}
                   </small>
                 )}
               </article>

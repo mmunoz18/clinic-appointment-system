@@ -12,6 +12,7 @@ import DoctorPatientsPage from "./pages/DoctorPatientsPage";
 import DoctorAppointmentsPage from "./pages/DoctorAppointmentsPage";
 import DoctorAvailabilityPage from "./pages/DoctorAvailabilityPage";
 import PatientDetailsPage from "./pages/PatientDetailsPage";
+import ReminderSettingsPage from "./pages/ReminderSettingsPage";
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
           <Route path="doctors" element={<DoctorsPage />} />
           <Route path="patients" element={<PatientsPage />} />
           <Route path="appointments" element={<AppointmentsPage />} />
+          <Route path="reminder-settings" element={<ReminderSettingsPage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="my-patients" element={<DoctorPatientsPage />} />
           <Route path="my-appointments" element={<DoctorAppointmentsPage />} />
