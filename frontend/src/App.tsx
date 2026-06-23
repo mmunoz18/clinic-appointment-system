@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -14,6 +15,8 @@ import DoctorAvailabilityPage from "./pages/DoctorAvailabilityPage";
 import PatientDetailsPage from "./pages/PatientDetailsPage";
 import ReminderSettingsPage from "./pages/ReminderSettingsPage";
 import AuditLogPage from "./pages/AuditLogPage";
+
+const CalendarPage = lazy(() => import("./pages/CalendarPage"));
 
 function App() {
   return (
@@ -34,6 +37,18 @@ function App() {
           <Route path="doctors" element={<DoctorsPage />} />
           <Route path="patients" element={<PatientsPage />} />
           <Route path="appointments" element={<AppointmentsPage />} />
+          <Route
+            path="calendar"
+            element={
+              <Suspense
+                fallback={
+                  <p className="loading-state">Loading calendar...</p>
+                }
+              >
+                <CalendarPage />
+              </Suspense>
+            }
+          />
           <Route path="reminder-settings" element={<ReminderSettingsPage />} />
           <Route path="audit-log" element={<AuditLogPage />} />
           <Route path="users" element={<UsersPage />} />

@@ -17,6 +17,7 @@ import Modal from "../components/Modal";
 import StatusBadge from "../components/StatusBadge";
 import Pagination from "../components/Pagination";
 import TableActions from "../components/TableActions";
+import PageHeader from "../components/PageHeader";
 
 function PatientsPage() {
   const navigate = useNavigate();
@@ -221,21 +222,21 @@ function PatientsPage() {
 
   return (
     <section>
-        <div className="page-header">
-        <h1>Patients</h1>
-        <p>View and manage patient records.</p>
-        </div>
-
-
-        {canManagePatients && !isFormOpen && (
-          <button
-            type="button"
-            className="add-record-button"
-            onClick={handleAddPatient}
-          >
-            + Add Patient
-          </button>
-        )}
+        <PageHeader
+          title="Patients"
+          description="View and manage patient records."
+          action={
+            canManagePatients && !isFormOpen ? (
+              <button
+                type="button"
+                className="add-record-button"
+                onClick={handleAddPatient}
+              >
+                + Add Patient
+              </button>
+            ) : undefined
+          }
+        />
 
         <div className="list-filters">
           <label className="filter-search">

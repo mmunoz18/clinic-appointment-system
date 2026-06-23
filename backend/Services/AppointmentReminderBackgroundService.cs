@@ -1,6 +1,7 @@
 using backend.Data;
 using backend.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 namespace backend.Services;
 
@@ -114,7 +115,8 @@ public class AppointmentReminderBackgroundService : BackgroundService
                     "Appointment",
                     appointment.Id,
                     "ReminderSent",
-                    $"Automatic {GetReminderLabel(reminderType.Value)} reminder sent to {appointment.Patient?.Email}.",
+                    $"Automatic {GetReminderLabel(reminderType.Value)} reminder sent to {appointment.Patient?.Name} for the appointment with {appointment.Doctor?.Name} on {FormatAppointmentDate(appointment.AppointmentDate)}.",
+                    entityName: GetAppointmentEntityName(appointment),
                     userName: "System",
                     cancellationToken: cancellationToken);
             }
@@ -126,7 +128,8 @@ public class AppointmentReminderBackgroundService : BackgroundService
                     "Appointment",
                     appointment.Id,
                     "ReminderFailed",
-                    $"Automatic {GetReminderLabel(reminderType.Value)} reminder failed: {exception.Message}",
+                    $"Automatic {GetReminderLabel(reminderType.Value)} reminder failed for {appointment.Patient?.Name}'s appointment with {appointment.Doctor?.Name} on {FormatAppointmentDate(appointment.AppointmentDate)}. {exception.Message}",
+                    entityName: GetAppointmentEntityName(appointment),
                     userName: "System",
                     cancellationToken: cancellationToken);
                 _logger.LogWarning(
@@ -172,5 +175,18 @@ public class AppointmentReminderBackgroundService : BackgroundService
         return reminderType == ReminderType.TwoHours
             ? "2-hour"
             : "24-hour";
+    }
+
+    private static string GetAppointmentEntityName(
+        Appointment appointment)
+    {
+        return $"{appointment.Patient?.Name ?? "Unknown patient"} with {appointment.Doctor?.Name ?? "Unknown doctor"}";
+    }
+
+    private static string FormatAppointmentDate(DateTime appointmentDate)
+    {
+        return appointmentDate.ToString(
+            "dddd, MMMM d, yyyy 'at' h:mm tt",
+            CultureInfo.GetCultureInfo("en-US"));
     }
 }

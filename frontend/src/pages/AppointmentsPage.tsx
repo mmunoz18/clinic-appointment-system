@@ -3,21 +3,17 @@ import {
   createAppointment,
   deleteAppointment,
   getAppointmentsPaged,
-  getDoctorAvailability,
   getDoctors,
   getPatients,
   sendAppointmentReminder,
   updateAppointment,
   type Appointment,
   type Doctor,
-  type DoctorAvailability,
   type Patient,
 } from "../api/clinicApi";
 import { toast } from "react-toastify";
 import ConfirmModal from "../components/ConfirmModal";
 import EmptyState from "../components/EmptyState";
-import FormActions from "../components/FormActions";
-import FormCard from "../components/FormCard";
 import Modal from "../components/Modal";
 import AppointmentStatusBadge from "../components/AppointmentStatusBadge";
 import StatusBadge from "../components/StatusBadge";
@@ -25,21 +21,16 @@ import Pagination from "../components/Pagination";
 import { formatDateTime } from "../utils/dateTime";
 import ReminderStatusBadge from "../components/ReminderStatusBadge";
 import TableActions from "../components/TableActions";
+import AppointmentForm, {
+  type AppointmentFormValues,
+} from "../components/AppointmentForm";
+import PageHeader from "../components/PageHeader";
 
 function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
-  const [doctorAvailability, setDoctorAvailability] = useState<
-    DoctorAvailability[]
-  >([]);
-  const [loadingAvailability, setLoadingAvailability] = useState(false);
-
-  const [doctorId, setDoctorId] = useState("");
-  const [patientId, setPatientId] = useState("");
-  const [appointmentDate, setAppointmentDate] = useState("");
-  const [status, setStatus] = useState("Scheduled");
   const [editingAppointment, setEditingAppointment] =
     useState<Appointment | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -66,31 +57,6 @@ function AppointmentsPage() {
   const canCreateAppointments = role === "Admin" || role === "Receptionist";
   const canDeleteAppointments = role === "Admin" || role === "Receptionist";
   const canEditAppointments = role === "Admin" || role === "Receptionist" || role === "Doctor";
-  const isPastAppointment =
-    editingAppointment != null &&
-    new Date(editingAppointment.appointmentDate) < new Date();
-  const requiredFieldsComplete =
-    doctorId !== "" &&
-    patientId !== "" &&
-    appointmentDate !== "" &&
-    status !== "";
-  const dateError =
-    appointmentDate !== "" &&
-    !isPastAppointment &&
-    new Date(appointmentDate) <= new Date()
-      ? "Appointments must be scheduled in the future."
-      : "";
-  const appointmentChanged =
-    editingAppointment == null ||
-    Number(doctorId) !== editingAppointment.doctorId ||
-    Number(patientId) !== editingAppointment.patientId ||
-    appointmentDate !== editingAppointment.appointmentDate.slice(0, 16) ||
-    status !== editingAppointment.status;
-  const saveDisabled =
-    !requiredFieldsComplete ||
-    dateError !== "" ||
-    !appointmentChanged ||
-    saving;
 
   const loadAppointments = useCallback(async () => {
     setLoading(true);
@@ -155,60 +121,10 @@ function AppointmentsPage() {
     loadAppointmentsPage();
   }, [loadAppointments]);
 
-  useEffect(() => {
-    async function loadSelectedDoctorAvailability() {
-      if (!doctorId) {
-        setDoctorAvailability([]);
-        return;
-      }
-
-      setLoadingAvailability(true);
-
-      try {
-        setDoctorAvailability(
-          await getDoctorAvailability(Number(doctorId))
-        );
-      } catch (error) {
-        setDoctorAvailability([]);
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Error loading doctor availability";
-        toast.error(message);
-      } finally {
-        setLoadingAvailability(false);
-      }
-    }
-
-    loadSelectedDoctorAvailability();
-  }, [doctorId]);
-
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-
-    if (saveDisabled) {
-      return;
-    }
-
-    const appointmentPayload = {
-      doctorId:
-        isPastAppointment && editingAppointment
-          ? editingAppointment.doctorId
-          : Number(doctorId),
-      patientId:
-        isPastAppointment && editingAppointment
-          ? editingAppointment.patientId
-          : Number(patientId),
-      appointmentDate:
-        isPastAppointment && editingAppointment
-          ? editingAppointment.appointmentDate
-          : appointmentDate,
-      status,
-    };
-
-    if (editingAppointment && status === "Completed") {
+  async function handleSubmit(values: AppointmentFormValues) {
+    if (editingAppointment && values.status === "Completed") {
       setAppointmentToComplete({
-        ...appointmentPayload,
+        ...values,
         id: editingAppointment.id,
         doctorName: editingAppointment.doctorName,
         patientName: editingAppointment.patientName,
@@ -222,14 +138,14 @@ function AppointmentsPage() {
     try {
       if (editingAppointment) {
         await updateAppointment({
-          ...appointmentPayload,
+          ...values,
           id: editingAppointment.id,
           doctorName: editingAppointment.doctorName,
           patientName: editingAppointment.patientName,
         });
         toast.success("Appointment updated successfully");
       } else {
-        await createAppointment(appointmentPayload);
+        await createAppointment(values);
         toast.success("Appointment created successfully");
       }
 
@@ -250,20 +166,11 @@ function AppointmentsPage() {
 
   function handleEdit(appointment: Appointment) {
     setEditingAppointment(appointment);
-    setDoctorId(String(appointment.doctorId));
-    setPatientId(String(appointment.patientId));
-    setAppointmentDate(appointment.appointmentDate.slice(0, 16));
-    setStatus(appointment.status);
     setIsFormOpen(true);
   }
 
   function clearAppointmentForm() {
     setEditingAppointment(null);
-    setDoctorId("");
-    setPatientId("");
-    setAppointmentDate("");
-    setStatus("Scheduled");
-    setDoctorAvailability([]);
     setIsFormOpen(false);
   }
 
@@ -354,21 +261,21 @@ function AppointmentsPage() {
 
   return (
     <section>
-      <div className="page-header">
-        <h1>Appointments</h1>
-        <p>Schedule and manage clinic appointments.</p>
-      </div>
-
-
-      {canCreateAppointments && !isFormOpen && (
-        <button
-          type="button"
-          className="add-record-button"
-          onClick={handleAddAppointment}
-        >
-          + New Appointment
-        </button>
-      )}
+      <PageHeader
+        title="Appointments"
+        description="Schedule and manage clinic appointments."
+        action={
+          canCreateAppointments && !isFormOpen ? (
+            <button
+              type="button"
+              className="add-record-button"
+              onClick={handleAddAppointment}
+            >
+              + New Appointment
+            </button>
+          ) : undefined
+        }
+      />
 
       <div className="list-filters appointment-filters">
         {role !== "Doctor" && (
@@ -483,107 +390,15 @@ function AppointmentsPage() {
             }
           }}
         >
-          <FormCard onSubmit={handleSubmit}>
-            {isPastAppointment && (
-              <div className="form-info-message">
-                This appointment is in the past. Only its status can be edited.
-              </div>
-            )}
-
-            <div className="appointment-doctor-field">
-              <label>
-                <span>Doctor</span>
-                <select
-                  value={doctorId}
-                  disabled={isPastAppointment}
-                  onChange={(event) => setDoctorId(event.target.value)}
-                  required
-                >
-                  <option value="">Select doctor</option>
-                  {doctors.map((doctor) => (
-                    <option key={doctor.id} value={doctor.id}>
-                      {doctor.name} - {doctor.specialty}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              {doctorId && !isPastAppointment && (
-                <DoctorAvailabilityPreview
-                  doctor={doctors.find(
-                    (doctor) => doctor.id === Number(doctorId)
-                  )}
-                  availability={doctorAvailability}
-                  loading={loadingAvailability}
-                />
-              )}
-            </div>
-
-            <label>
-              <span>Patient</span>
-              <select
-                value={patientId}
-                disabled={isPastAppointment}
-                onChange={(event) => setPatientId(event.target.value)}
-                required
-              >
-                <option value="">Select patient</option>
-                {patients.map((patient) => (
-                  <option key={patient.id} value={patient.id}>
-                    {patient.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              <span>Date</span>
-              <input
-                type="datetime-local"
-                value={appointmentDate}
-                disabled={isPastAppointment}
-                min={editingAppointment ? undefined : new Date().toISOString().slice(0, 16)}
-                onChange={(event) => setAppointmentDate(event.target.value)}
-                aria-invalid={dateError !== ""}
-                aria-describedby={dateError ? "appointment-date-error" : undefined}
-                required
-              />
-              {dateError && (
-                <span id="appointment-date-error" className="field-error">
-                  {dateError}
-                </span>
-              )}
-            </label>
-
-            {editingAppointment && (
-              <label>
-                <span>Status</span>
-                <select
-                  value={status}
-                  onChange={(event) => setStatus(event.target.value)}
-                >
-                  <option value="Scheduled">Scheduled</option>
-                  <option value="Cancelled">Cancelled</option>
-                  {(editingAppointment.status === "Scheduled" ||
-                    (isPastAppointment &&
-                      editingAppointment.status === "Cancelled")) && (
-                    <option value="Completed">Completed</option>
-                  )}
-                </select>
-              </label>
-            )}
-
-            <FormActions
-              saving={saving}
-              saveDisabled={saveDisabled}
-              onCancel={clearAppointmentForm}
-              saveText={
-                editingAppointment
-                  ? "Update Appointment"
-                  : "Save Appointment"
-              }
-            />
-          </FormCard>
+          <AppointmentForm
+            key={editingAppointment?.id ?? "new-appointment"}
+            doctors={doctors}
+            patients={patients}
+            appointment={editingAppointment}
+            saving={saving}
+            onCancel={clearAppointmentForm}
+            onSubmit={handleSubmit}
+          />
         </Modal>
       )}
 
@@ -746,57 +561,3 @@ function AppointmentsPage() {
 }
 
 export default AppointmentsPage;
-
-const availabilityDays = [
-  { dayOfWeek: 1, label: "Monday" },
-  { dayOfWeek: 2, label: "Tuesday" },
-  { dayOfWeek: 3, label: "Wednesday" },
-  { dayOfWeek: 4, label: "Thursday" },
-  { dayOfWeek: 5, label: "Friday" },
-  { dayOfWeek: 6, label: "Saturday" },
-  { dayOfWeek: 0, label: "Sunday" },
-];
-
-type DoctorAvailabilityPreviewProps = {
-  doctor?: Doctor;
-  availability: DoctorAvailability[];
-  loading: boolean;
-};
-
-function DoctorAvailabilityPreview({
-  doctor,
-  availability,
-  loading,
-}: DoctorAvailabilityPreviewProps) {
-  return (
-    <div className="appointment-availability-preview">
-      <strong>{doctor?.name ?? "Doctor"} availability</strong>
-
-      {loading ? (
-        <p>Loading availability...</p>
-      ) : (
-        <div className="appointment-availability-days">
-          {availabilityDays.map((day) => {
-            const windows = availability
-              .filter((item) => item.dayOfWeek === day.dayOfWeek)
-              .sort((a, b) => a.startTime.localeCompare(b.startTime));
-
-            return (
-              <p key={day.dayOfWeek}>
-                <span>{day.label}:</span>{" "}
-                {windows.length === 0
-                  ? "Unavailable"
-                  : windows
-                      .map(
-                        (window) =>
-                          `${window.startTime.slice(0, 5)}-${window.endTime.slice(0, 5)}`
-                      )
-                      .join(", ")}
-              </p>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}

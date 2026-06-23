@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using System.Globalization;
 using backend.DTOs;
 using backend.Services;
 
@@ -259,11 +260,16 @@ public class AppointmentsController : ControllerBase
 
         _context.Appointments.Add(appointment);
         await _context.SaveChangesAsync();
+        var auditDescription = await GetAppointmentAuditDescriptionAsync(
+            appointment.DoctorId,
+            appointment.PatientId,
+            appointment.AppointmentDate);
         await _auditService.LogAsync(
             "Appointment",
             appointment.Id,
             "Created",
-            $"Created appointment for doctor #{appointment.DoctorId} and patient #{appointment.PatientId} on {appointment.AppointmentDate:O}.");
+            $"Appointment created for {auditDescription.EntityName} on {auditDescription.FormattedDate}.",
+            entityName: auditDescription.EntityName);
 
         return CreatedAtAction(
             nameof(GetAppointment),
@@ -338,7 +344,10 @@ public class AppointmentsController : ControllerBase
                 "Appointment",
                 appointment.Id,
                 "ReminderSent",
-                $"Manual reminder sent to {appointment.Patient?.Email}.",
+                $"Reminder sent to {appointment.Patient?.Name} for the appointment with {appointment.Doctor?.Name} on {FormatAppointmentDate(appointment.AppointmentDate)}.",
+                entityName: GetAppointmentEntityName(
+                    appointment.Patient?.Name,
+                    appointment.Doctor?.Name),
                 cancellationToken: cancellationToken);
 
             return Ok(new
@@ -354,7 +363,10 @@ public class AppointmentsController : ControllerBase
                 "Appointment",
                 appointment.Id,
                 "ReminderFailed",
-                exception.Message,
+                $"Reminder failed for {appointment.Patient?.Name}'s appointment with {appointment.Doctor?.Name} on {FormatAppointmentDate(appointment.AppointmentDate)}. {exception.Message}",
+                entityName: GetAppointmentEntityName(
+                    appointment.Patient?.Name,
+                    appointment.Doctor?.Name),
                 cancellationToken: cancellationToken);
 
             return StatusCode(
@@ -370,7 +382,10 @@ public class AppointmentsController : ControllerBase
                 "Appointment",
                 appointment.Id,
                 "ReminderFailed",
-                appointment.ReminderLastError,
+                $"Reminder failed for {appointment.Patient?.Name}'s appointment with {appointment.Doctor?.Name} on {FormatAppointmentDate(appointment.AppointmentDate)}. {appointment.ReminderLastError}",
+                entityName: GetAppointmentEntityName(
+                    appointment.Patient?.Name,
+                    appointment.Doctor?.Name),
                 cancellationToken: cancellationToken);
 
             return StatusCode(
@@ -467,6 +482,10 @@ public class AppointmentsController : ControllerBase
 
             await _context.SaveChangesAsync();
 
+            var auditDescription = await GetAppointmentAuditDescriptionAsync(
+                appointment.DoctorId,
+                appointment.PatientId,
+                appointment.AppointmentDate);
             var auditAction =
                 previousStatus != appointment.Status &&
                 appointment.Status == "Completed"
@@ -475,12 +494,17 @@ public class AppointmentsController : ControllerBase
                       appointment.Status == "Cancelled"
                         ? "Cancelled"
                         : "Updated";
+            var auditDetails =
+                auditAction == "Updated"
+                    ? $"Appointment updated for {auditDescription.EntityName} on {auditDescription.FormattedDate}."
+                    : $"Appointment for {auditDescription.EntityName} on {auditDescription.FormattedDate}. Status changed from {previousStatus} to {appointment.Status}.";
 
             await _auditService.LogAsync(
                 "Appointment",
                 existingAppointment.Id,
                 auditAction,
-                $"Status: {previousStatus} → {appointment.Status}. Doctor #{appointment.DoctorId}, patient #{appointment.PatientId}, date {appointment.AppointmentDate:O}.");
+                auditDetails,
+                entityName: auditDescription.EntityName);
 
             return NoContent();
         }
@@ -496,7 +520,11 @@ public class AppointmentsController : ControllerBase
     {
         try
         {
-            var appointment = await _context.Appointments.FindAsync(id);
+            var appointment = await _context.Appointments
+                .Include(existingAppointment => existingAppointment.Doctor)
+                .Include(existingAppointment => existingAppointment.Patient)
+                .SingleOrDefaultAsync(existingAppointment =>
+                    existingAppointment.Id == id);
 
             if (appointment == null)
             {
@@ -510,11 +538,15 @@ public class AppointmentsController : ControllerBase
 
             _context.Appointments.Remove(appointment);
             await _context.SaveChangesAsync();
+            var entityName = GetAppointmentEntityName(
+                appointment.Patient?.Name,
+                appointment.Doctor?.Name);
             await _auditService.LogAsync(
                 "Appointment",
                 id,
                 "Deleted",
-                "Appointment deleted.");
+                $"Deleted the appointment for {entityName} scheduled for {FormatAppointmentDate(appointment.AppointmentDate)}.",
+                entityName: entityName);
 
             return NoContent();
         }
@@ -733,4 +765,44 @@ public class AppointmentsController : ControllerBase
             .Select(user => user.DoctorId)
             .SingleOrDefaultAsync();
     }
+
+    private async Task<AppointmentAuditDescription>
+        GetAppointmentAuditDescriptionAsync(
+            int doctorId,
+            int patientId,
+            DateTime appointmentDate)
+    {
+        var doctorName = await _context.Doctors
+            .AsNoTracking()
+            .Where(doctor => doctor.Id == doctorId)
+            .Select(doctor => doctor.Name)
+            .SingleAsync();
+        var patientName = await _context.Patients
+            .AsNoTracking()
+            .Where(patient => patient.Id == patientId)
+            .Select(patient => patient.Name)
+            .SingleAsync();
+
+        return new AppointmentAuditDescription(
+            GetAppointmentEntityName(patientName, doctorName),
+            FormatAppointmentDate(appointmentDate));
+    }
+
+    private static string GetAppointmentEntityName(
+        string? patientName,
+        string? doctorName)
+    {
+        return $"{patientName ?? "Unknown patient"} with {doctorName ?? "Unknown doctor"}";
+    }
+
+    private static string FormatAppointmentDate(DateTime appointmentDate)
+    {
+        return appointmentDate.ToString(
+            "dddd, MMMM d, yyyy 'at' h:mm tt",
+            CultureInfo.GetCultureInfo("en-US"));
+    }
+
+    private sealed record AppointmentAuditDescription(
+        string EntityName,
+        string FormattedDate);
 }

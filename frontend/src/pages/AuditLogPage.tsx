@@ -41,16 +41,25 @@ const actionLabels: Record<string, string> = {
 
 function getEventDescription(log: AuditLog) {
   const entity = log.entityType.toLowerCase();
-  const entityLabel = log.entityName
-    ? `${entity} ${log.entityName}`
-    : `${entity} #${log.entityId}`;
+  const entityLabel =
+    log.entityType === "Appointment"
+      ? log.entityName
+        ? `appointment for ${log.entityName}`
+        : "appointment"
+      : log.entityName
+        ? `${entity} ${log.entityName}`
+        : entity;
 
   if (log.action === "ReminderSent") {
-    return `Reminder sent for ${entityLabel}`;
+    return log.entityName
+      ? `Reminder sent for ${log.entityName}`
+      : "Reminder sent";
   }
 
   if (log.action === "ReminderFailed") {
-    return `Reminder failed for ${entityLabel}`;
+    return log.entityName
+      ? `Reminder failed for ${log.entityName}`
+      : "Reminder failed";
   }
 
   const action = actionLabels[log.action] ?? log.action.toLowerCase();

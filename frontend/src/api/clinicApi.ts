@@ -31,6 +31,20 @@ export type Appointment = {
   reminderSentAt?: string | null;
 }
 
+export type CalendarAppointment = {
+  id: number;
+  title: string;
+  start: string;
+  end: string;
+  status: "Scheduled" | "Completed" | "Cancelled";
+  doctorId: number;
+  doctorName: string;
+  doctorSpecialty: string;
+  patientId: number;
+  patientName: string;
+  reminderStatus: "Pending" | "Sent" | "Failed" | "NotApplicable";
+};
+
 export type AuthResponse = {
   token: string;
   email: string;
@@ -260,6 +274,19 @@ export async function getAppointments() {
   });
 
   return handleResponse(response, "Failed to fetch appointments");
+}
+
+export async function getCalendarAppointments(): Promise<
+  CalendarAppointment[]
+> {
+  const response = await fetch(`${API_BASE_URL}/api/calendar`, {
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse(
+    response,
+    "Failed to fetch calendar appointments"
+  );
 }
 
 export async function getAppointmentsPaged(

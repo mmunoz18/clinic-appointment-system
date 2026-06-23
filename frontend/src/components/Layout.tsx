@@ -36,6 +36,7 @@ function Layout() {
           {(isAdmin || isReceptionist) && (
             <NavLink to="/appointments">Appointments</NavLink>
           )}
+          <NavLink to="/calendar">Calendar</NavLink>
           {isAdmin && (
             <NavLink to="/reminder-settings">Reminder Settings</NavLink>
           )}

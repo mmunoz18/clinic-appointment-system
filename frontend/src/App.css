@@ -59,6 +59,18 @@ a {
   margin-bottom: 24px;
 }
 
+.page-header-with-action {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.page-header-with-action .add-record-button {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
 .page-header h1 {
   margin: 0;
   font-size: 32px;
@@ -801,6 +813,15 @@ button:active {
 }
 
 @media (max-width: 760px) {
+  .page-header-with-action {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .page-header-with-action .add-record-button {
+    align-self: flex-start;
+  }
+
   .app-layout {
     display: block;
   }
@@ -1139,6 +1160,164 @@ button:active {
   color: #1e40af;
 }
 
+.calendar-card {
+  padding: 20px;
+  background: white;
+  border-radius: 14px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+  overflow-x: auto;
+}
+
+.calendar-card .fc {
+  min-width: 720px;
+}
+
+.calendar-filters {
+  margin-top: 0;
+}
+
+.calendar-status-filters {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1 1 420px;
+  min-width: 300px;
+  margin: 0;
+  padding: 0 0 7px;
+  border: 0;
+}
+
+.calendar-status-filters legend {
+  margin-bottom: 7px;
+  color: #374151;
+  font-weight: 600;
+}
+
+.calendar-status-filters label {
+  display: inline-flex;
+  grid-template-columns: none;
+  align-items: center;
+  gap: 7px;
+  min-width: auto;
+  color: #4b5563;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.calendar-status-filters input {
+  width: auto;
+}
+
+.calendar-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.calendar-legend-scheduled {
+  background: #22c55e;
+}
+
+.calendar-legend-completed {
+  background: #3b82f6;
+}
+
+.calendar-legend-cancelled {
+  background: #ef4444;
+}
+
+.calendar-card .fc .fc-button-primary {
+  background: #fff;
+  border-color: #d1d5db;
+  color: #374151;
+  box-shadow: none;
+}
+
+.calendar-card .fc .fc-button-primary:hover,
+.calendar-card .fc .fc-button-primary:focus {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.calendar-card .fc .fc-button-primary:not(:disabled).fc-button-active,
+.calendar-card .fc .fc-button-primary:not(:disabled):active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: white;
+}
+
+.calendar-card .fc .fc-event {
+  border-width: 1px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.calendar-card .fc .fc-toolbar-title {
+  color: #111827;
+  font-size: 1.35rem;
+}
+
+.calendar-card .fc .fc-col-header-cell-cushion,
+.calendar-card .fc .fc-daygrid-day-number {
+  color: #374151;
+}
+
+.calendar-today-button {
+  margin-bottom: 1px;
+}
+
+.appointment-details dl {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+}
+
+.appointment-details dl > div {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 16px;
+  align-items: center;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.appointment-details dt {
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.appointment-details dd {
+  margin: 0;
+  color: #111827;
+  font-weight: 600;
+}
+
+.appointment-detail-actions {
+  flex-wrap: wrap;
+}
+
+.appointment-detail-actions .complete-button {
+  background: #16a34a;
+}
+
+.appointment-detail-actions .complete-button:hover:not(:disabled) {
+  background: #15803d;
+}
+
+.appointment-detail-actions .calendar-cancel-button {
+  background: #fff;
+  color: #2563eb;
+  border: 1px solid #2563eb;
+}
+
+.appointment-detail-actions .calendar-cancel-button:hover:not(:disabled) {
+  background: #eff6ff;
+}
+
 .clear-filters-button {
   margin-bottom: 1px;
 }
@@ -1167,6 +1346,20 @@ button:active {
   .pagination-actions button {
     flex: 1;
   }
+
+  .calendar-card {
+    padding: 12px;
+  }
+
+  .calendar-status-filters {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .appointment-details dl > div {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
 }
 
 .table-actions {
@@ -1176,7 +1369,7 @@ button:active {
   white-space: nowrap;
 }
 
-td .table-actions .table-action-button {
+.table-actions .table-action-button {
   margin: 0;
   padding: 7px 10px;
   background: #fff;
@@ -1186,27 +1379,27 @@ td .table-actions .table-action-button {
   font-size: 13px;
 }
 
-td .table-actions .table-action-button:hover:not(:disabled) {
+.table-actions .table-action-button:hover:not(:disabled) {
   background: #f3f4f6;
   border-color: #9ca3af;
 }
 
-td .table-actions .table-action-positive {
+.table-actions .table-action-positive {
   color: #15803d;
   border-color: #86efac;
 }
 
-td .table-actions .table-action-positive:hover:not(:disabled) {
+.table-actions .table-action-positive:hover:not(:disabled) {
   background: #f0fdf4;
   border-color: #4ade80;
 }
 
-td .table-actions .table-action-danger {
+.table-actions .table-action-danger {
   color: #b91c1c;
   border-color: #fecaca;
 }
 
-td .table-actions .table-action-danger:hover:not(:disabled) {
+.table-actions .table-action-danger:hover:not(:disabled) {
   background: #fef2f2;
   border-color: #f87171;
 }

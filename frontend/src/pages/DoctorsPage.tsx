@@ -16,6 +16,7 @@ import Modal from "../components/Modal";
 import StatusBadge from "../components/StatusBadge";
 import Pagination from "../components/Pagination";
 import TableActions from "../components/TableActions";
+import PageHeader from "../components/PageHeader";
 
 function DoctorsPage() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -239,20 +240,21 @@ function DoctorsPage() {
 
   return (
     <section>
-      <div className="page-header">
-        <h1>Doctors</h1>
-        <p>View and manage clinic doctors.</p>
-      </div>
-
-      {canManageDoctors && !isFormOpen && (
-        <button
-          type="button"
-          className="add-record-button"
-          onClick={handleAddDoctor}
-        >
-          + Add Doctor
-        </button>
-      )}
+      <PageHeader
+        title="Doctors"
+        description="View and manage clinic doctors."
+        action={
+          canManageDoctors && !isFormOpen ? (
+            <button
+              type="button"
+              className="add-record-button"
+              onClick={handleAddDoctor}
+            >
+              + Add Doctor
+            </button>
+          ) : undefined
+        }
+      />
 
       <div className="list-filters">
         <label className="filter-search">
